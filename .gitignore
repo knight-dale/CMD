@@ -1,0 +1,4 @@
+*.sql
+*.gs
+.DS_Store
+Thumbs.db

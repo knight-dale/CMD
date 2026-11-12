@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Admin Dashboard | CMD Kimathi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <div class="admin-container">
+    <aside class="admin-nav-sidebar">
+      <div class="admin-brand-header">
+        <a href="index.html" class="nav-logo" style="margin-bottom:4px;">
+          <span class="nav-logo-brand">CMD</span>
+          <span class="nav-logo-desc">ADMIN CONSOLE</span>
+        </a>
+        <span class="mono-tag orange" style="font-size:0.65rem;">KIMATHI CLUB EXECUTIVE</span>
+      </div>
+
+      <nav class="admin-nav-list">
+        <button type="button" class="admin-tab-trigger active" data-tab="pane-projects">Projects Vault</button>
+        <button type="button" class="admin-tab-trigger" data-tab="pane-challenges">Weekly Competitions</button>
+        <button type="button" class="admin-tab-trigger" data-tab="pane-submissions">Member Submissions</button>
+        <button type="button" class="admin-tab-trigger" data-tab="pane-leaderboard">Edit Leaderboard</button>
+        <button type="button" class="admin-tab-trigger" data-tab="pane-suggestions">Community Polls</button>
+        <button type="button" class="admin-tab-trigger" data-tab="pane-media">Site Media Manager</button>
+      </nav>
+
+      <div class="admin-sidebar-bottom">
+        <a href="index.html" class="btn-dark-outline" style="width:100%;font-size:0.8rem;text-align:center;">&larr; View Live Site</a>
+      </div>
+    </aside>
+
+    <main class="admin-workspace">
+      <div class="admin-top-bar">
+        <div>
+          <span class="mono-tag orange" id="admin-category-tag">SYSTEM MANAGEMENT</span>
+          <h1 style="font-size:2.2rem;font-weight:700;letter-spacing:-0.03em;margin-top:6px;" id="admin-page-heading">Projects Vault</h1>
+        </div>
+        <div>
+          <span class="mono-tag muted-dark" style="background:#15181B;padding:6px 14px;border:1px solid var(--border-dark);border-radius:2px;">EXECUTIVE ACCESS</span>
+        </div>
+      </div>
+
+      <section id="pane-projects" class="admin-pane active">
+        <div class="admin-box">
+          <span class="mono-tag orange">NEW CAD MODEL</span>
+          <h3 style="font-size:1.35rem;font-weight:700;margin:8px 0 20px;">Upload Project to Archive</h3>
+
+          <form id="project-admin-form">
+            <div class="admin-form-two-col">
+              <div>
+                <label class="field-label">Project Title</label>
+                <input type="text" id="p-title" class="admin-field-input" required placeholder="e.g. Planar 4 Bar Kinematic Walker">
+              </div>
+              <div>
+                <label class="field-label">Category</label>
+                <select id="p-category" class="admin-field-select" required>
+                  <option value="Mechanical Design">Mechanical Design</option>
+                  <option value="Robotics &amp; Automation">Robotics &amp; Automation</option>
+                  <option value="Automotive Design">Automotive Design</option>
+                  <option value="Consumer Hardware">Consumer Hardware</option>
+                  <option value="Tooling &amp; Jigs">Tooling &amp; Jigs</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Development Stage</label>
+                <select id="p-stage" class="admin-field-select" required>
+                  <option value="Concept">CAD Concept</option>
+                  <option value="Prototype">3D Printed Prototype</option>
+                  <option value="Fabricated">Laboratory Tested &amp; Fabricated</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Tools &amp; Materials (Comma separated)</label>
+                <input type="text" id="p-tools" class="admin-field-input" placeholder="SolidWorks, ANSYS, FDM PETG, Cura">
+              </div>
+              <div>
+                <label class="field-label">Engineering Specifications (Comma separated)</label>
+                <input type="text" id="p-specs" class="admin-field-input" placeholder="Tolerance: 0.05 mm, Max Load: 450 N, Ratio: 12 to 1">
+              </div>
+              <div>
+                <label class="field-label">Drawing Sheet PDF (URL or File Upload)</label>
+                <input type="text" id="p-pdf-url" class="admin-field-input" placeholder="https://example.com/drawing.pdf">
+                <input type="file" id="p-pdf-file" accept="application/pdf" style="margin-top:8px;font-size:0.8rem;color:var(--text-dark-secondary);">
+              </div>
+              <div class="admin-form-span-all">
+                <label class="field-label">Model Image or Render (URL or File Upload)</label>
+                <input type="text" id="p-img-url" class="admin-field-input" placeholder="https://example.com/render.jpg">
+                <input type="file" id="p-img-file" accept="image/*" style="margin-top:8px;font-size:0.8rem;color:var(--text-dark-secondary);">
+              </div>
+              <div class="admin-form-span-all">
+                <label class="field-label">Technical Description &amp; FEA Findings</label>
+                <textarea id="p-desc" class="admin-field-textarea" rows="4" required placeholder="Describe kinematic joints, contact stress analysis, print orientation, and test data"></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn-green" style="margin-top:24px;">Register Project in Vault &nearr;</button>
+          </form>
+        </div>
+
+        <div class="admin-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-size:1.25rem;font-weight:700;">Archived Engineering Projects</h3>
+          </div>
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Stage</th>
+                  <th>Tools</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="projects-table-body">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-dark-secondary);">Loading projects...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="pane-challenges" class="admin-pane">
+        <div class="admin-box">
+          <span class="mono-tag orange">WEEKLY COMPETITION</span>
+          <h3 style="font-size:1.35rem;font-weight:700;margin:8px 0 20px;">Publish CAD Design Brief</h3>
+
+          <form id="challenge-admin-form">
+            <div class="admin-form-two-col">
+              <div>
+                <label class="field-label">Week Number</label>
+                <input type="number" id="c-week" class="admin-field-input" required placeholder="15" min="1">
+              </div>
+              <div>
+                <label class="field-label">Competition Challenge Title</label>
+                <input type="text" id="c-title" class="admin-field-input" required placeholder="e.g. Lightweight Compliant Flexure Hinge">
+              </div>
+              <div>
+                <label class="field-label">Start Date</label>
+                <input type="date" id="c-start" class="admin-field-input" required>
+              </div>
+              <div>
+                <label class="field-label">Submission Deadline (End Date)</label>
+                <input type="date" id="c-end" class="admin-field-input" required>
+              </div>
+              <div class="admin-form-span-all">
+                <label class="field-label">Challenge Specification PDF (URL or File Upload)</label>
+                <input type="text" id="c-pdf-url" class="admin-field-input" placeholder="https://example.com/challenge-brief.pdf">
+                <input type="file" id="c-pdf-file" accept="application/pdf" style="margin-top:8px;font-size:0.8rem;color:var(--text-dark-secondary);">
+              </div>
+              <div class="admin-form-span-all">
+                <label class="field-label">Challenge Requirements &amp; Boundary Targets</label>
+                <textarea id="c-desc" class="admin-field-textarea" rows="4" required placeholder="Specify design envelope, mass limitations, allowable materials, and simulation targets"></textarea>
+              </div>
+              <div class="admin-form-span-all" style="display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="c-active" checked style="accent-color:var(--neon-green);width:18px;height:18px;">
+                <label for="c-active" style="font-size:0.85rem;color:#FFFFFF;">Set as Active Live Challenge (Deactivates earlier entries)</label>
+              </div>
+            </div>
+            <button type="submit" class="btn-green" style="margin-top:24px;">Publish CAD Challenge &nearr;</button>
+          </form>
+        </div>
+
+        <div class="admin-box">
+          <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:16px;">All Weekly Challenges</h3>
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th>Challenge Title</th>
+                  <th>Deadline</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="challenges-table-body">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-dark-secondary);">Loading challenges...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="pane-submissions" class="admin-pane">
+        <div class="admin-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-size:1.25rem;font-weight:700;">Student CAD Model Submissions</h3>
+            <button type="button" class="btn-dark-outline" id="reload-submissions-button" style="font-size:0.75rem;padding:8px 14px;">Refresh Submissions</button>
+          </div>
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Member Name</th>
+                  <th>Email</th>
+                  <th>Model Title</th>
+                  <th>PDF Model</th>
+                  <th>Engineering Notes</th>
+                </tr>
+              </thead>
+              <tbody id="submissions-table-body">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="pane-leaderboard" class="admin-pane">
+        <div class="admin-box">
+          <span class="mono-tag orange">STANDINGS EDITOR</span>
+          <h3 style="font-size:1.35rem;font-weight:700;margin:8px 0 20px;">Add or Modify Leaderboard Member</h3>
+
+          <form id="leaderboard-admin-form">
+            <input type="hidden" id="lb-id">
+            <div class="admin-form-two-col">
+              <div>
+                <label class="field-label">Rank Position</label>
+                <input type="number" id="lb-rank" class="admin-field-input" required placeholder="1" min="1">
+              </div>
+              <div>
+                <label class="field-label">Member Full Name</label>
+                <input type="text" id="lb-name" class="admin-field-input" required placeholder="e.g. Kelvin Mwangi">
+              </div>
+              <div>
+                <label class="field-label">Engineering Points</label>
+                <input type="number" id="lb-points" class="admin-field-input" required placeholder="1840" min="0">
+              </div>
+              <div>
+                <label class="field-label">Total Submissions</label>
+                <input type="number" id="lb-count" class="admin-field-input" required placeholder="12" min="0">
+              </div>
+              <div class="admin-form-span-all">
+                <label class="field-label">Badges Earned (Comma separated)</label>
+                <input type="text" id="lb-badges" class="admin-field-input" placeholder="GOLD, FEA SPECIALIST, TOP VOTER">
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+              <button type="submit" class="btn-green" id="lb-submit-button">Save Member Standings &nearr;</button>
+              <button type="button" class="btn-dark-outline" id="lb-cancel-button" style="display:none;">Cancel Edit</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="admin-box">
+          <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:16px;">Current Standings Table</h3>
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Name</th>
+                  <th>Points</th>
+                  <th>Badges</th>
+                  <th>Submissions</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-admin-tbody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-dark-secondary);">Loading standings...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="pane-suggestions" class="admin-pane">
+        <div class="admin-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div>
+              <span class="mono-tag orange">COMMUNITY DESIGN PIPELINE</span>
+              <h3 style="font-size:1.25rem;font-weight:700;margin-top:4px;">Community Pitches &amp; Polls</h3>
+            </div>
+            <span class="mono-tag muted-dark">MARK WINNER TO SET AS BUILD</span>
+          </div>
+
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Votes</th>
+                  <th>Design Suggestion Description</th>
+                  <th>Submitted By</th>
+                  <th>Selection Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="suggestions-admin-tbody">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-dark-secondary);">Loading community proposals...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="pane-media" class="admin-pane">
+        <div class="admin-box">
+          <span class="mono-tag orange">HOMEPAGE IMAGE REPLACEMENT</span>
+          <h3 style="font-size:1.35rem;font-weight:700;margin:8px 0 8px;">Switch &amp; Replace Homepage Images</h3>
+          <p style="font-size:0.88rem;color:var(--text-dark-secondary);line-height:1.6;margin-bottom:24px;">
+            Upload any JPG or PNG file to replace the visuals on the live site. Changes take effect on the homepage immediately.
+          </p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:24px;">
+            <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <span class="mono-tag orange" style="font-size:0.68rem;">FIRST HOMEPAGE IMAGE / HERO CAD</span>
+              <div style="width:100%;aspect-ratio:1/1;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <img id="preview-hero-img" src="assets/cad-assembly.svg" alt="Hero CAD graphic preview" style="max-width:100%;max-height:100%;object-fit:contain;">
+              </div>
+              <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
+              <input type="file" id="media-hero-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
+              <button type="button" class="btn-green" id="save-hero-img-btn" style="width:100%;margin-top:6px;">Update Hero Image &nearr;</button>
+              <button type="button" class="btn-dark-outline" id="reset-hero-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
+            </div>
+
+            <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <span class="mono-tag muted-dark" style="font-size:0.68rem;">FEATURED PROJECT 01 / FORMULA STUDENT</span>
+              <div style="width:100%;aspect-ratio:16/10;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <img id="preview-proj1-img" src="assets/project-formula.svg" alt="Project 1 preview" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
+              <input type="file" id="media-proj1-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
+              <button type="button" class="btn-green" id="save-proj1-img-btn" style="width:100%;margin-top:6px;">Update Project 01 &nearr;</button>
+              <button type="button" class="btn-dark-outline" id="reset-proj1-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
+            </div>
+
+            <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <span class="mono-tag muted-dark" style="font-size:0.68rem;">FEATURED PROJECT 02 / ATLAS ARM</span>
+              <div style="width:100%;aspect-ratio:16/10;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <img id="preview-proj2-img" src="assets/project-robotarm.svg" alt="Project 2 preview" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
+              <input type="file" id="media-proj2-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
+              <button type="button" class="btn-green" id="save-proj2-img-btn" style="width:100%;margin-top:6px;">Update Project 02 &nearr;</button>
+              <button type="button" class="btn-dark-outline" id="reset-proj2-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
+            </div>
+
+            <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <span class="mono-tag muted-dark" style="font-size:0.68rem;">FEATURED PROJECT 03 / ROVER</span>
+              <div style="width:100%;aspect-ratio:16/10;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <img id="preview-proj3-img" src="assets/project-rover.svg" alt="Project 3 preview" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
+              <input type="file" id="media-proj3-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
+              <button type="button" class="btn-green" id="save-proj3-img-btn" style="width:100%;margin-top:6px;">Update Project 03 &nearr;</button>
+              <button type="button" class="btn-dark-outline" id="reset-proj3-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
+            </div>
+
+            <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <span class="mono-tag muted-dark" style="font-size:0.68rem;">WORKSHOP SECTION PHOTO</span>
+              <div style="width:100%;aspect-ratio:16/9;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <img id="preview-workshop-img" src="assets/workshop-photo.svg" alt="Workshop preview" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
+              <input type="file" id="media-workshop-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
+              <button type="button" class="btn-green" id="save-workshop-img-btn" style="width:100%;margin-top:6px;">Update Workshop Photo &nearr;</button>
+              <button type="button" class="btn-dark-outline" id="reset-workshop-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="supabase-client.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Member Access | CMD Kimathi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(135deg, rgba(16, 18, 20, 0.92) 0%, rgba(16, 18, 20, 0.80) 50%, rgba(16, 18, 20, 0.92) 100%), url('assets/soe.png'), var(--bg-dark);
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color: #FFFFFF;
+    }
+    .auth-box {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(22, 25, 29, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-dark);
+      border-radius: 4px;
+      padding: 36px;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65);
+    }
+    .auth-tab-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      background: #101214;
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid var(--border-dark);
+      margin: 20px 0;
+    }
+    .auth-tab-btn {
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-dark-secondary);
+      border-radius: 2px;
+      transition: all var(--transition);
+    }
+    .auth-tab-btn.active {
+      background: var(--bg-dark-card);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .form-field {
+      margin-bottom: 16px;
+    }
+    .field-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dark-secondary);
+      margin-bottom: 6px;
+    }
+    .field-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #101214;
+      border: 1px solid var(--border-dark);
+      border-radius: 4px;
+      color: #FFFFFF;
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .field-input:focus {
+      border-color: var(--neon-green);
+    }
+    .password-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .password-wrap .field-input {
+      padding-right: 44px;
+    }
+    .toggle-password-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-dark-secondary);
+      padding: 6px;
+      border-radius: 4px;
+      transition: color var(--transition);
+    }
+    .toggle-password-btn:hover {
+      color: #FFFFFF;
+    }
+    .btn-green:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      background: #23272D !important;
+      color: #7A828E !important;
+      border: 1px solid #353B44 !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+    .missing-rules-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .missing-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      background: rgba(255, 74, 34, 0.12);
+      border: 1px solid rgba(255, 74, 34, 0.35);
+      border-radius: 3px;
+      color: var(--orange);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+      transition: all var(--transition);
+    }
+    .missing-chip .missing-icon {
+      font-weight: 700;
+      font-size: 0.75rem;
+    }
+    .all-met-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      background: rgba(34, 238, 96, 0.1);
+      border: 1px solid rgba(34, 238, 96, 0.3);
+      border-radius: 3px;
+      color: var(--neon-green);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+    }
+    .match-status-msg {
+      margin-top: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .match-status-msg.matched {
+      color: var(--neon-green);
+    }
+    .match-status-msg.mismatched {
+      color: var(--orange);
+    }
+  </style>
+</head>
+<body>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <div class="auth-box">
+    <div style="text-align:center;">
+      <a href="index.html" class="nav-logo" style="justify-content:center;margin-bottom:8px;">
+        <span class="nav-logo-brand" style="font-size:1.8rem;">CMD</span>
+      </a>
+      <span class="mono-tag orange">STUDENT LED. ENGINEERING DRIVEN.</span>
+      <h2 style="font-size:1.5rem;font-weight:700;margin-top:6px;" id="auth-main-heading">Member Access Portal</h2>
+    </div>
+
+    <div class="auth-tab-row" id="auth-tab-controls">
+      <button type="button" class="auth-tab-btn active" id="tab-btn-signin">Sign In</button>
+      <button type="button" class="auth-tab-btn" id="tab-btn-signup">Register</button>
+    </div>
+
+    <form id="auth-signin-form">
+      <div class="form-field">
+        <label class="field-label" for="signin-email">Student Email</label>
+        <input type="email" id="signin-email" class="field-input" placeholder="designer@students.dkut.ac.ke" required>
+      </div>
+      <div class="form-field">
+        <label class="field-label" for="signin-password">Password</label>
+        <div class="password-wrap">
+          <input type="password" id="signin-password" class="field-input" placeholder="Enter password" required>
+          <button type="button" class="toggle-password-btn" data-target="signin-password" aria-label="Toggle password visibility">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div style="text-align:right;margin-top:-6px;margin-bottom:16px;">
+        <button type="button" id="btn-show-forgot" class="mono-tag muted-dark" style="font-size:0.72rem;background:none;border:none;cursor:pointer;">Forgot password?</button>
+      </div>
+      <button type="submit" class="btn-green" style="width:100%;">Sign In to Club &nearr;</button>
+    </form>
+
+    <form id="auth-signup-form" style="display:none;">
+      <div class="form-field">
+        <label class="field-label" for="signup-name">Full Engineering Name</label>
+        <input type="text" id="signup-name" class="field-input" placeholder="e.g. Kelvin Mwangi" required>
+      </div>
+      <div class="form-field">
+        <label class="field-label" for="signup-email">Student Email</label>
+        <input type="email" id="signup-email" class="field-input" placeholder="designer@students.dkut.ac.ke" required>
+      </div>
+      <div class="form-field">
+        <label class="field-label" for="signup-pass">Password</label>
+        <div class="password-wrap">
+          <input type="password" id="signup-pass" class="field-input" placeholder="Enter secure password" required>
+          <button type="button" class="toggle-password-btn" data-target="signup-pass" aria-label="Toggle password visibility">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="password-missing-container" class="missing-rules-container"></div>
+      </div>
+      <div class="form-field">
+        <label class="field-label" for="signup-confirm">Confirm Password</label>
+        <div class="password-wrap">
+          <input type="password" id="signup-confirm" class="field-input" placeholder="Reenter password" required>
+          <button type="button" class="toggle-password-btn" data-target="signup-confirm" aria-label="Toggle password visibility">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="signup-match-status" class="match-status-msg" style="display:none;"></div>
+      </div>
+      <button type="submit" id="btn-signup-submit" class="btn-green" style="width:100%;margin-top:8px;" disabled>Create Member Account &nearr;</button>
+    </form>
+
+    <form id="auth-forgot-form" style="display:none;">
+      <div class="form-field">
+        <label class="field-label" for="forgot-email">Student Email</label>
+        <input type="email" id="forgot-email" class="field-input" placeholder="designer@students.dkut.ac.ke" required>
+      </div>
+      <button type="submit" class="btn-green" style="width:100%;margin-top:8px;">Send Reset Link &nearr;</button>
+      <div style="text-align:center;margin-top:14px;">
+        <button type="button" id="btn-back-to-login" class="mono-tag muted-dark" style="font-size:0.72rem;background:none;border:none;cursor:pointer;">&larr; Back to Sign In</button>
+      </div>
+    </form>
+
+    <form id="auth-reset-password-form" style="display:none;">
+      <div class="form-field">
+        <label class="field-label" for="new-pass">New Password</label>
+        <div class="password-wrap">
+          <input type="password" id="new-pass" class="field-input" placeholder="Minimum 6 characters" required>
+          <button type="button" class="toggle-password-btn" data-target="new-pass" aria-label="Toggle password visibility">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="field-label" for="new-pass-confirm">Confirm New Password</label>
+        <div class="password-wrap">
+          <input type="password" id="new-pass-confirm" class="field-input" placeholder="Reenter new password" required>
+          <button type="button" class="toggle-password-btn" data-target="new-pass-confirm" aria-label="Toggle password visibility">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn-green" style="width:100%;margin-top:8px;">Save New Password &nearr;</button>
+    </form>
+
+    <div style="margin-top:24px;text-align:center;">
+      <a href="index.html" class="mono-tag muted-dark" style="font-size:0.75rem;">&larr; Return to main site</a>
+    </div>
+  </div>
+
+  <script src="supabase-client.js"></script>
+  <script>
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast-msg ${type}`;
+      t.textContent = message;
+      container.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 260);
+      }, 3400);
+    }
+
+    const btnSignin = document.getElementById('tab-btn-signin');
+    const btnSignup = document.getElementById('tab-btn-signup');
+    const formSignin = document.getElementById('auth-signin-form');
+    const formSignup = document.getElementById('auth-signup-form');
+    const formForgot = document.getElementById('auth-forgot-form');
+    const formReset = document.getElementById('auth-reset-password-form');
+    const tabControls = document.getElementById('auth-tab-controls');
+    const mainHeading = document.getElementById('auth-main-heading');
+    const btnShowForgot = document.getElementById('btn-show-forgot');
+    const btnBackToLogin = document.getElementById('btn-back-to-login');
+
+    btnSignin.addEventListener('click', () => {
+      btnSignin.classList.add('active');
+      btnSignup.classList.remove('active');
+      formSignin.style.display = 'block';
+      formSignup.style.display = 'none';
+      formForgot.style.display = 'none';
+      formReset.style.display = 'none';
+      if (mainHeading) mainHeading.textContent = 'Member Access Portal';
+    });
+
+    btnSignup.addEventListener('click', () => {
+      btnSignup.classList.add('active');
+      btnSignin.classList.remove('active');
+      formSignup.style.display = 'block';
+      formSignin.style.display = 'none';
+      formForgot.style.display = 'none';
+      formReset.style.display = 'none';
+      if (mainHeading) mainHeading.textContent = 'Member Access Portal';
+      validateSignupForm();
+    });
+
+    if (btnShowForgot) {
+      btnShowForgot.addEventListener('click', () => {
+        formSignin.style.display = 'none';
+        formSignup.style.display = 'none';
+        formForgot.style.display = 'block';
+        formReset.style.display = 'none';
+        tabControls.style.display = 'none';
+        if (mainHeading) mainHeading.textContent = 'Reset Password';
+      });
+    }
+
+    if (btnBackToLogin) {
+      btnBackToLogin.addEventListener('click', () => {
+        tabControls.style.display = 'grid';
+        btnSignin.click();
+      });
+    }
+
+    formSignin.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signin-email').value.trim();
+      const pass = document.getElementById('signin-password').value;
+
+      try {
+        await window.cmdSupabase.signIn(email, pass);
+        const isAdm = await window.cmdSupabase.isAdmin();
+        if (isAdm) {
+          showToast('Executive access confirmed. Redirecting to Admin Console...', 'success');
+          setTimeout(() => {
+            window.location.href = 'admin.html';
+          }, 600);
+        } else {
+          showToast('Authentication confirmed. Welcome back.', 'success');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 600);
+        }
+      } catch (err) {
+        showToast(err.message || 'Login unverified', 'error');
+      }
+    });
+
+    function validateSignupForm() {
+      const nameEl = document.getElementById('signup-name');
+      const emailEl = document.getElementById('signup-email');
+      const passEl = document.getElementById('signup-pass');
+      const confirmEl = document.getElementById('signup-confirm');
+      const submitBtn = document.getElementById('btn-signup-submit');
+      const missingContainer = document.getElementById('password-missing-container');
+      const matchStatus = document.getElementById('signup-match-status');
+
+      const nameVal = nameEl ? nameEl.value.trim() : '';
+      const emailVal = emailEl ? emailEl.value.trim() : '';
+      const passVal = passEl ? passEl.value : '';
+      const confirmVal = confirmEl ? confirmEl.value : '';
+
+      const hasLetter = /[a-zA-Z]/.test(passVal);
+      const hasNumber = /[0-9]/.test(passVal);
+      const hasSpecial = /[^a-zA-Z0-9]/.test(passVal);
+      const hasLength = passVal.length >= 6;
+
+      if (missingContainer) {
+        if (passVal.length === 0) {
+          missingContainer.innerHTML = '';
+        } else {
+          const missingItems = [];
+          if (!hasLetter) missingItems.push('Missing letter');
+          if (!hasNumber) missingItems.push('Missing number');
+          if (!hasSpecial) missingItems.push('Missing special character');
+          if (!hasLength) missingItems.push('Missing minimum 6 characters');
+
+          if (missingItems.length > 0) {
+            missingContainer.innerHTML = missingItems.map(text => `
+              <span class="missing-chip">
+                <span class="missing-icon">&times;</span>
+                <span>${text}</span>
+              </span>
+            `).join('');
+          } else {
+            missingContainer.innerHTML = `
+              <span class="all-met-chip">
+                <span style="font-weight:700;">&#10003;</span>
+                <span>All password criteria met</span>
+              </span>
+            `;
+          }
+        }
+      }
+
+      let passwordsMatch = false;
+      if (matchStatus) {
+        if (confirmVal.length > 0) {
+          matchStatus.style.display = 'flex';
+          if (confirmVal === passVal && passVal.length > 0) {
+            matchStatus.className = 'match-status-msg matched';
+            matchStatus.innerHTML = '&#10003; Passwords match';
+            passwordsMatch = true;
+          } else {
+            matchStatus.className = 'match-status-msg mismatched';
+            matchStatus.innerHTML = '&times; Passwords do not match';
+            passwordsMatch = false;
+          }
+        } else {
+          matchStatus.style.display = 'none';
+          passwordsMatch = false;
+        }
+      }
+
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+      const nameValid = nameVal.length > 0;
+      const passValid = hasLetter && hasNumber && hasSpecial && hasLength;
+
+      const isComplete = nameValid && emailValid && passValid && passwordsMatch;
+      if (submitBtn) {
+        submitBtn.disabled = !isComplete;
+      }
+    }
+
+    const signupInputs = ['signup-name', 'signup-email', 'signup-pass', 'signup-confirm'];
+    signupInputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', validateSignupForm);
+        el.addEventListener('keyup', validateSignupForm);
+        el.addEventListener('change', validateSignupForm);
+      }
+    });
+
+    formSignup.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('signup-name').value;
+      const email = document.getElementById('signup-email').value;
+      const pass = document.getElementById('signup-pass').value;
+      const confirm = document.getElementById('signup-confirm').value;
+
+      if (pass !== confirm) {
+        showToast('Password confirmation does not match', 'error');
+        return;
+      }
+
+      try {
+        await window.cmdSupabase.signUp(email, pass, name);
+        showToast('Account registered successfully', 'success');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 900);
+      } catch (err) {
+        showToast(err.message || 'Registration issue occurred', 'error');
+      }
+    });
+
+    if (formForgot) {
+      formForgot.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('forgot-email').value;
+        try {
+          await window.cmdSupabase.resetPassword(email);
+          showToast('Password reset link sent to your email', 'success');
+          setTimeout(() => {
+            tabControls.style.display = 'grid';
+            btnSignin.click();
+          }, 1800);
+        } catch (err) {
+          showToast(err.message || 'Could not send reset link', 'error');
+        }
+      });
+    }
+
+    if (formReset) {
+      formReset.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPass = document.getElementById('new-pass').value;
+        const newConfirm = document.getElementById('new-pass-confirm').value;
+
+        if (newPass !== newConfirm) {
+          showToast('New passwords do not match', 'error');
+          return;
+        }
+
+        try {
+          await window.cmdSupabase.updatePassword(newPass);
+          showToast('Password updated successfully. You can now sign in.', 'success');
+          setTimeout(() => {
+            window.location.href = 'auth.html';
+          }, 1200);
+        } catch (err) {
+          showToast(err.message || 'Error saving new password', 'error');
+        }
+      });
+    }
+
+    if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token'))) {
+      if (tabControls) tabControls.style.display = 'none';
+      if (formSignin) formSignin.style.display = 'none';
+      if (formSignup) formSignup.style.display = 'none';
+      if (formForgot) formForgot.style.display = 'none';
+      if (formReset) formReset.style.display = 'block';
+      if (mainHeading) mainHeading.textContent = 'Set New Password';
+    }
+
+    document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        const eyeOpen = btn.querySelector('.eye-open');
+        const eyeClosed = btn.querySelector('.eye-closed');
+        if (input) {
+          if (input.type === 'password') {
+            input.type = 'text';
+            if (eyeOpen) eyeOpen.style.display = 'none';
+            if (eyeClosed) eyeClosed.style.display = 'block';
+          } else {
+            input.type = 'password';
+            if (eyeOpen) eyeOpen.style.display = 'block';
+            if (eyeClosed) eyeClosed.style.display = 'none';
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
