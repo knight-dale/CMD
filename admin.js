@@ -275,6 +275,7 @@ async function renderSubmissionsList() {
   subs.forEach(s => {
     const tr = document.createElement('tr');
     const dateStr = s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent';
+    const isCleanUrl = s.pdf_url && typeof s.pdf_url === 'string' && s.pdf_url !== '#' && !s.pdf_url.startsWith('file:') && !s.pdf_url.startsWith('C:') && !s.pdf_url.startsWith('D:');
 
     tr.innerHTML = `
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${dateStr}</td>
@@ -282,7 +283,7 @@ async function renderSubmissionsList() {
       <td style="font-size:0.8rem;color:var(--text-dark-secondary);">${s.member_email}</td>
       <td>${s.model_title}</td>
       <td>
-        ${s.pdf_url && s.pdf_url !== '#' ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF &nearr;</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}
+        ${isCleanUrl ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF &nearr;</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}
       </td>
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:240px;">${s.notes || 'None'}</td>
     `;
@@ -507,7 +508,10 @@ function initSiteMediaManager() {
   slots.forEach(slot => {
     const previewEl = document.getElementById(slot.previewId);
     if (previewEl && currentMap[slot.key]) {
-      previewEl.src = currentMap[slot.key];
+      const srcVal = currentMap[slot.key];
+      if (typeof srcVal === 'string' && !srcVal.startsWith('file:') && !srcVal.startsWith('C:') && !srcVal.startsWith('D:')) {
+        previewEl.src = srcVal;
+      }
     }
 
     const saveBtn = document.getElementById(slot.saveBtnId);
@@ -586,7 +590,10 @@ function initSiteMediaManager() {
       slots.forEach(slot => {
         const previewEl = document.getElementById(slot.previewId);
         if (previewEl && remoteMap && remoteMap[slot.key]) {
-          previewEl.src = remoteMap[slot.key];
+          const srcVal = remoteMap[slot.key];
+          if (typeof srcVal === 'string' && !srcVal.startsWith('file:') && !srcVal.startsWith('C:') && !srcVal.startsWith('D:')) {
+            previewEl.src = srcVal;
+          }
         }
       });
     });

@@ -327,7 +327,10 @@ async function handleSuggestionVote(id, btn) {
 
 function applyMediaSlot(id, url) {
   const el = document.getElementById(id);
-  if (el && url) el.src = url;
+  if (el && url && typeof url === 'string') {
+    if (url.startsWith('file:') || url.startsWith('C:') || url.startsWith('D:')) return;
+    el.src = url;
+  }
 }
 
 async function loadSiteMedia() {
