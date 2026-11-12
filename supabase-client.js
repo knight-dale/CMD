@@ -351,14 +351,12 @@ async function fetchSiteMedia() {
 async function saveSiteMediaSlot(key, url) {
   const client = getClient();
   if (client) {
-    try {
-      await client.from('site_settings').upsert({
-        key,
-        value: url,
-        updated_at: new Date().toISOString()
-      });
-    } catch {
-    }
+    const { error } = await client.from('site_settings').upsert({
+      key,
+      value: url,
+      updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
   }
   try {
     const cached = JSON.parse(localStorage.getItem('cmd_site_media') || '{}');
@@ -371,10 +369,8 @@ async function saveSiteMediaSlot(key, url) {
 async function resetSiteMediaSlot(key) {
   const client = getClient();
   if (client) {
-    try {
-      await client.from('site_settings').delete().eq('key', key);
-    } catch {
-    }
+    const { error } = await client.from('site_settings').delete().eq('key', key);
+    if (error) throw error;
   }
   try {
     const cached = JSON.parse(localStorage.getItem('cmd_site_media') || '{}');

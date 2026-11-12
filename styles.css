@@ -1155,6 +1155,12 @@ button {
 }
 
 @media (max-width: 768px) {
+  #top-login-btn {
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    gap: 4px;
+    white-space: nowrap;
+  }
   .nav-menu {
     display: none;
   }
@@ -1171,5 +1177,13 @@ button {
   .footer-links-row {
     flex-wrap: wrap;
     gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  #top-login-btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    gap: 3px;
   }
 }

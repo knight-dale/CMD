@@ -524,38 +524,43 @@ function initSiteMediaManager() {
         showToast(`Processing ${file.name}...`, 'info');
 
         let finalUrl = '';
+        let uploadFailed = false;
+        let uploadError = '';
+
         if (window.cmdSupabase && window.cmdSupabase.uploadFile) {
           try {
             const path = `site_media/${slot.key}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
             finalUrl = await window.cmdSupabase.uploadFile('projects', path, file);
-          } catch {
-            finalUrl = '';
+          } catch (err) {
+            uploadFailed = true;
+            uploadError = err.message || 'Storage error';
           }
         }
 
-        if (!finalUrl) {
+        if (finalUrl) {
+          try {
+            if (window.cmdSupabase && window.cmdSupabase.saveSiteMediaSlot) {
+              await window.cmdSupabase.saveSiteMediaSlot(slot.key, finalUrl);
+            }
+            const updated = getMediaMap();
+            updated[slot.key] = finalUrl;
+            saveMediaMap(updated);
+            if (previewEl) previewEl.src = finalUrl;
+            showToast(`${slot.label} published live to Supabase for all devices`, 'success');
+          } catch (err) {
+            showToast(`Image uploaded to storage but database sync failed: ${err.message}. Run admin_migration.sql`, 'error');
+          }
+        } else {
+          showToast(`Cloud storage upload failed: ${uploadError || 'projects bucket missing'}. Run admin_migration.sql in Supabase SQL editor`, 'error');
           const reader = new FileReader();
-          reader.onload = async (e) => {
+          reader.onload = (e) => {
             const dataUrl = e.target.result;
             const updated = getMediaMap();
             updated[slot.key] = dataUrl;
             saveMediaMap(updated);
-            if (window.cmdSupabase && window.cmdSupabase.saveSiteMediaSlot) {
-              await window.cmdSupabase.saveSiteMediaSlot(slot.key, dataUrl);
-            }
             if (previewEl) previewEl.src = dataUrl;
-            showToast(`${slot.label} updated successfully`, 'success');
           };
           reader.readAsDataURL(file);
-        } else {
-          const updated = getMediaMap();
-          updated[slot.key] = finalUrl;
-          saveMediaMap(updated);
-          if (window.cmdSupabase && window.cmdSupabase.saveSiteMediaSlot) {
-            await window.cmdSupabase.saveSiteMediaSlot(slot.key, finalUrl);
-          }
-          if (previewEl) previewEl.src = finalUrl;
-          showToast(`${slot.label} updated successfully`, 'success');
         }
       });
     }
