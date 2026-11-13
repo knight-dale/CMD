@@ -452,32 +452,84 @@
   <div id="model-upload-modal" class="modal-backdrop">
     <div class="modal-dialog-card">
       <button type="button" class="modal-close-btn" id="modal-close-button" aria-label="Close modal">&times;</button>
-      <span class="mono-tag orange">CAD SUBMISSION</span>
-      <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Model Evaluation</h3>
-      <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
-        Provide your measured mass, centre of gravity, and CAD drawing sheet PDF for competition scoring.
-      </p>
+      <div id="modal-form-view">
+        <span class="mono-tag orange">CAD SUBMISSION</span>
+        <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Model Evaluation</h3>
+        <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
+          Provide your measured mass, centre of gravity, and CAD drawing sheet PDF for competition scoring.
+        </p>
 
-      <div style="background:#F0F2F5;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-size:0.82rem;color:var(--text-light-secondary);">
-        Submitting as: <strong id="modal-logged-user-name" style="color:var(--text-light-primary);">Authenticated Member</strong>
-        <span id="modal-logged-user-email" style="display:block;font-size:0.75rem;font-family:var(--font-mono);color:var(--text-light-secondary);margin-top:2px;"></span>
+        <div style="background:#F0F2F5;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-size:0.82rem;color:var(--text-light-secondary);">
+          Submitting as: <strong id="modal-logged-user-name" style="color:var(--text-light-primary);">Authenticated Member</strong>
+          <span id="modal-logged-user-email" style="display:block;font-size:0.75rem;font-family:var(--font-mono);color:var(--text-light-secondary);margin-top:2px;"></span>
+        </div>
+
+        <form id="cad-pdf-submission-form" style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Component Mass (kg)</label>
+            <input type="number" id="entry-mass" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 3.72" required>
+          </div>
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Gravity Distance from Origin (mm)</label>
+            <input type="number" id="entry-cog" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 48.6" required>
+          </div>
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Model Documentation (PDF)</label>
+            <input type="file" id="entry-pdf" accept="application/pdf" style="width:100%;padding:8px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-size:0.85rem;" required>
+          </div>
+          <button type="submit" class="btn-black" id="entry-submit-btn" style="width:100%;margin-top:6px;">Upload Model for Evaluation &rarr;</button>
+        </form>
       </div>
 
-      <form id="cad-pdf-submission-form" style="display:flex;flex-direction:column;gap:14px;">
-        <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Component Mass (kg)</label>
-          <input type="number" id="entry-mass" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 3.72" required>
+      <div id="modal-results-view" style="display:none;">
+        <span class="mono-tag" style="background:#E6F9EE;color:#0B8A3E;">EVALUATION COMPLETE</span>
+        <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Competition Results</h3>
+        <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
+          Your parameters have been scored and your total points updated on the leaderboard immediately.
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+          <div style="background:#F0F2F5;padding:12px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Component Mass</div>
+              <div style="font-weight:700;font-size:0.95rem;" id="res-mass-val">0.000 kg</div>
+            </div>
+            <div id="res-mass-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+30 PTS</div>
+          </div>
+
+          <div style="background:#F0F2F5;padding:12px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Centre of Gravity</div>
+              <div style="font-weight:700;font-size:0.95rem;" id="res-cog-val">0.000 mm</div>
+            </div>
+            <div id="res-cog-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+15 PTS</div>
+          </div>
+
+          <div style="background:#F0F2F5;padding:12px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Prompt Time Bonus (Within 2 Hours)</div>
+              <div style="font-weight:700;font-size:0.95rem;" id="res-prompt-val">Standard</div>
+            </div>
+            <div id="res-prompt-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+0 PTS</div>
+          </div>
+
+          <div style="background:#15181B;color:#FFFFFF;padding:14px 16px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.7rem;font-family:var(--font-mono);color:var(--text-dark-secondary);text-transform:uppercase;">Your Total Standings Points</div>
+              <div style="font-size:1.35rem;font-weight:800;font-family:var(--font-mono);color:var(--neon-green);" id="res-total-points">0 PTS</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.7rem;font-family:var(--font-mono);color:var(--text-dark-secondary);text-transform:uppercase;">Points Earned</div>
+              <div style="font-size:1.1rem;font-weight:700;font-family:var(--font-mono);color:#FFFFFF;" id="res-round-points">+0 PTS</div>
+            </div>
+          </div>
         </div>
-        <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Gravity Distance from Origin (mm)</label>
-          <input type="number" id="entry-cog" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 48.6" required>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button type="button" class="btn-black" id="res-goto-leaderboard-btn" style="width:100%;">View on Standings Leaderboard &rarr;</button>
+          <button type="button" class="btn-dark-outline" id="res-submit-another-btn" style="width:100%;font-size:0.8rem;padding:9px;color:var(--text-light-primary);border-color:var(--border-light);">Submit Another Model</button>
         </div>
-        <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Model Documentation (PDF)</label>
-          <input type="file" id="entry-pdf" accept="application/pdf" style="width:100%;padding:8px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-size:0.85rem;" required>
-        </div>
-        <button type="submit" class="btn-black" style="width:100%;margin-top:6px;">Upload Model for Evaluation &rarr;</button>
-      </form>
+      </div>
     </div>
   </div>
 

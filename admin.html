@@ -144,12 +144,12 @@
                 <input type="text" id="c-title" class="admin-field-input" required placeholder="e.g. Lightweight Compliant Flexure Hinge">
               </div>
               <div>
-                <label class="field-label">Start Date</label>
-                <input type="date" id="c-start" class="admin-field-input" required>
+                <label class="field-label">Start Date &amp; Time (Prompt 2hr timer begins)</label>
+                <input type="datetime-local" id="c-start" class="admin-field-input" required>
               </div>
               <div>
-                <label class="field-label">Submission Deadline (End Date)</label>
-                <input type="date" id="c-end" class="admin-field-input" required>
+                <label class="field-label">Submission Deadline (End Date &amp; Time)</label>
+                <input type="datetime-local" id="c-end" class="admin-field-input" required>
               </div>
               <div class="admin-form-span-all">
                 <label class="field-label">Challenge Specification PDF (URL or File Upload)</label>
@@ -224,13 +224,14 @@
                   <th>Mass OK</th>
                   <th>CoG (mm)</th>
                   <th>CoG OK</th>
+                  <th>Prompt (2hr)</th>
                   <th>Pts</th>
                   <th>PDF Model</th>
                   <th>Notes</th>
                 </tr>
               </thead>
               <tbody id="submissions-table-body">
-                <tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
+                <tr><td colspan="12" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
               </tbody>
             </table>
           </div>

@@ -167,17 +167,34 @@ async function fetchLeaderboard() {
 
 async function fetchSuggestions() {
   const client = getClient();
-  if (!client) return [];
-  try {
-    const { data, error } = await client
-      .from('suggestions')
-      .select('*')
-      .order('votes', { ascending: false });
-    if (error) throw error;
-    return data || [];
-  } catch {
-    return [];
+  let remoteData = [];
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('suggestions')
+        .select('*')
+        .order('votes', { ascending: false });
+      if (!error && data) {
+        remoteData = data;
+      }
+    } catch {
+    }
   }
+
+  let localData = [];
+  try {
+    localData = JSON.parse(localStorage.getItem('cmd_local_suggestions') || '[]');
+  } catch {
+  }
+
+  const combined = [...remoteData];
+  localData.forEach(loc => {
+    if (!combined.some(r => r.id === loc.id || r.text === loc.text)) {
+      combined.push(loc);
+    }
+  });
+
+  return combined;
 }
 
 async function uploadFile(bucketName, filePath, fileObj) {
@@ -222,10 +239,63 @@ async function fetchAllChallenges() {
 }
 
 async function submitSuggestion(text) {
-  return await sendToBackend('submit_suggestion', { text });
+  const client = getClient();
+  const user = await getCurrentUser();
+  const userName = user ? (user.user_metadata?.display_name || user.email.split('@')[0]) : 'Student Member';
+  let created = null;
+
+  if (client && user) {
+    try {
+      const { data, error } = await client.from('suggestions').insert([{
+        user_id: user.id,
+        display_name: userName,
+        text: text.trim(),
+        votes: 0,
+        is_selected: false
+      }]).select();
+      if (!error && data && data.length > 0) {
+        created = data[0];
+      }
+    } catch {
+    }
+  }
+
+  const localItem = created || {
+    id: 'sug_' + Date.now(),
+    display_name: userName,
+    text: text.trim(),
+    votes: 0,
+    is_selected: false,
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const list = JSON.parse(localStorage.getItem('cmd_local_suggestions') || '[]');
+    list.unshift(localItem);
+    localStorage.setItem('cmd_local_suggestions', JSON.stringify(list));
+  } catch {
+  }
+
+  try {
+    await sendToBackend('submit_suggestion', { text });
+  } catch {
+  }
+
+  return localItem;
 }
 
 async function voteOnSuggestion(suggestionId) {
+  const client = getClient();
+  const user = await getCurrentUser();
+  if (client && user) {
+    try {
+      await client.from('suggestion_votes').insert([{
+        user_id: user.id,
+        suggestion_id: suggestionId
+      }]);
+    } catch {
+    }
+  }
   return await sendToBackend('vote_suggestion', { suggestionId });
 }
 
@@ -235,17 +305,19 @@ async function submitChallengeEntry(entryData) {
 
 async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
   const client = getClient();
-  if (!client || !email) return;
+  if (!client || !email) return { totalPoints: pointsToAdd || 0 };
   const normalizedEmail = email.toLowerCase().trim();
   const pts = Number.isFinite(pointsToAdd) ? pointsToAdd : 0;
+  let finalPoints = pts;
   const { data: existing } = await client
     .from('leaderboard')
     .select('id, points, submission_count')
     .eq('member_email', normalizedEmail)
     .maybeSingle();
   if (existing) {
+    finalPoints = (existing.points || 0) + pts;
     await client.from('leaderboard').update({
-      points: (existing.points || 0) + pts,
+      points: finalPoints,
       submission_count: (existing.submission_count || 0) + 1
     }).eq('id', existing.id);
   } else {
@@ -257,6 +329,7 @@ async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
       badges: []
     }]);
   }
+  return { totalPoints: finalPoints };
 }
 
 async function submitChallengeEntryWithScoring(entryData) {
@@ -268,10 +341,12 @@ async function submitChallengeEntryWithScoring(entryData) {
 
   let massCorrect = backendResult ? !!backendResult.massCorrect : false;
   let cogCorrect = backendResult ? !!backendResult.cogCorrect : false;
+  let promptBonus = backendResult ? !!backendResult.promptBonus : false;
   let pointsAwarded = backendResult && backendResult.pointsAwarded !== undefined ? backendResult.pointsAwarded : 0;
 
+  const challenge = await fetchCurrentChallenge();
+
   if (!backendResult) {
-    const challenge = await fetchCurrentChallenge();
     if (challenge) {
       if (challenge.answer_mass != null && entryData.submitted_mass != null) {
         const tol = challenge.answer_mass_tolerance != null ? parseFloat(challenge.answer_mass_tolerance) : 0.05;
@@ -285,9 +360,18 @@ async function submitChallengeEntryWithScoring(entryData) {
         cogCorrect = diff <= tol;
         if (cogCorrect) pointsAwarded += 15;
       }
+      if (challenge.start_date) {
+        const startTime = new Date(challenge.start_date).getTime();
+        const now = Date.now();
+        if (!isNaN(startTime) && now >= startTime && (now - startTime) <= (2 * 60 * 60 * 1000)) {
+          promptBonus = true;
+          pointsAwarded += 10;
+        }
+      }
     }
   }
 
+  let totalPoints = backendResult && backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
   const client = getClient();
   if (client) {
     const submissionPayload = {
@@ -300,6 +384,7 @@ async function submitChallengeEntryWithScoring(entryData) {
       submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
       mass_correct: massCorrect,
       cog_correct: cogCorrect,
+      prompt_bonus: promptBonus,
       points_awarded: pointsAwarded
     };
     try {
@@ -307,7 +392,10 @@ async function submitChallengeEntryWithScoring(entryData) {
     } catch {
     }
     try {
-      await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+      const lbRes = await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+      if (lbRes && lbRes.totalPoints !== undefined) {
+        totalPoints = lbRes.totalPoints;
+      }
     } catch {
     }
   }
@@ -315,7 +403,9 @@ async function submitChallengeEntryWithScoring(entryData) {
   return {
     massCorrect,
     cogCorrect,
-    pointsAwarded
+    promptBonus,
+    pointsAwarded,
+    totalPoints
   };
 }
 

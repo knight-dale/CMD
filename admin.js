@@ -275,7 +275,7 @@ async function renderSubmissionsList() {
   }
 
   if (!subs || subs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
     return;
   }
 
@@ -286,8 +286,10 @@ async function renderSubmissionsList() {
     const isCleanUrl = s.pdf_url && typeof s.pdf_url === 'string' && s.pdf_url !== '#' && !s.pdf_url.startsWith('file:') && !s.pdf_url.startsWith('C:') && !s.pdf_url.startsWith('D:');
     const massOk = s.mass_correct ? 'YES' : 'NO';
     const cogOk = s.cog_correct ? 'YES' : 'NO';
+    const promptBonusText = s.prompt_bonus ? '+10 PTS' : 'NO';
     const massStyle = s.mass_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
     const cogStyle = s.cog_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
+    const promptStyle = s.prompt_bonus ? 'color:var(--neon-green);font-weight:700;' : 'color:var(--text-dark-secondary);';
 
     tr.innerHTML = `
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${dateStr}</td>
@@ -298,6 +300,7 @@ async function renderSubmissionsList() {
       <td style="${massStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? massOk : 'N/A'}</td>
       <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? s.submitted_cog + ' mm' : 'N/A'}</td>
       <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? cogOk : 'N/A'}</td>
+      <td style="${promptStyle}font-family:var(--font-mono);font-size:0.85rem;">${promptBonusText}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
       <td>
         ${isCleanUrl ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}

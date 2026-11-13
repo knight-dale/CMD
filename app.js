@@ -40,12 +40,6 @@ const fallbackLeaderboard = [
   { rank: 6, display_name: 'Grace Muthoni', points: 940, badges: ['CFD ENTHUSIAST'], submission_count: 5 }
 ];
 
-const fallbackSuggestions = [
-  { id: 's1', display_name: 'Samuel Karanja', text: 'Peristaltic chemical dosing pump with toolless snap fit rollers for medical laboratory titration rigs.', votes: 24, is_selected: true },
-  { id: 's2', display_name: 'Ann Wambui', text: 'Compliant pantograph mechanism for solar panel angle tracking with zero pin joints.', votes: 19, is_selected: false },
-  { id: 's3', display_name: 'Edwin Koech', text: 'Cycloidal drive speed reducer with custom eccentric bearing race for an omnidirectional rover wheel.', votes: 15, is_selected: false }
-];
-
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -210,9 +204,11 @@ async function loadLeaderboardTable() {
     list = fallbackLeaderboard;
   }
 
+  list.sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
+
   tbody.innerHTML = '';
   list.forEach((item, index) => {
-    const rankNum = item.rank || (index + 1);
+    const rankNum = index + 1;
     const tr = document.createElement('tr');
 
     let rankClass = '';
@@ -243,7 +239,14 @@ async function loadCommunitySuggestions() {
   }
 
   if (!items || items.length === 0) {
-    items = fallbackSuggestions;
+    feed.innerHTML = `
+      <div style="background:#FFFFFF;border:1px dashed var(--border-light);border-radius:4px;padding:32px 20px;text-align:center;">
+        <span class="mono-tag orange" style="font-size:0.68rem;">COMMUNITY PIPELINE</span>
+        <h4 style="font-size:1.05rem;font-weight:700;margin:10px 0 6px;color:var(--text-light-primary);">No proposals yet</h4>
+        <p style="font-size:0.85rem;color:var(--text-light-secondary);margin:0;">No proposals yet. Submit one using the form below to begin community voting.</p>
+      </div>
+    `;
+    return;
   }
 
   const user = window.cmdSupabase ? await window.cmdSupabase.getCurrentUser() : null;
@@ -404,8 +407,74 @@ function initUploadModal() {
   ];
   const closeBtn = document.getElementById('modal-close-button');
   const form = document.getElementById('cad-pdf-submission-form');
+  const formView = document.getElementById('modal-form-view');
+  const resultsView = document.getElementById('modal-results-view');
+  const submitBtn = document.getElementById('entry-submit-btn');
+  const gotoLbBtn = document.getElementById('res-goto-leaderboard-btn');
+  const submitAnotherBtn = document.getElementById('res-submit-another-btn');
+
+  let latestResult = null;
+  let lastMass = null;
+  let lastCog = null;
 
   if (!modal) return;
+
+  function resetModalState() {
+    if (formView) formView.style.display = 'block';
+    if (resultsView) resultsView.style.display = 'none';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Upload Model for Evaluation \u2192';
+      submitBtn.style.background = '';
+      submitBtn.style.color = '';
+    }
+    latestResult = null;
+    lastMass = null;
+    lastCog = null;
+  }
+
+  function displayResults(result, mass, cog) {
+    if (!resultsView) return;
+    if (formView) formView.style.display = 'none';
+    resultsView.style.display = 'block';
+
+    const massVal = document.getElementById('res-mass-val');
+    const massBadge = document.getElementById('res-mass-badge');
+    const cogVal = document.getElementById('res-cog-val');
+    const cogBadge = document.getElementById('res-cog-badge');
+    const promptVal = document.getElementById('res-prompt-val');
+    const promptBadge = document.getElementById('res-prompt-badge');
+    const roundPts = document.getElementById('res-round-points');
+    const totalPts = document.getElementById('res-total-points');
+
+    if (massVal) massVal.textContent = mass != null ? `${mass} kg` : 'N/A';
+    if (massBadge) {
+      massBadge.textContent = result.massCorrect ? '+30 PTS' : '+0 PTS';
+      massBadge.style.background = result.massCorrect ? '#E6F9EE' : '#FEECEB';
+      massBadge.style.color = result.massCorrect ? '#0B8A3E' : '#C8322B';
+    }
+
+    if (cogVal) cogVal.textContent = cog != null ? `${cog} mm` : 'N/A';
+    if (cogBadge) {
+      cogBadge.textContent = result.cogCorrect ? '+15 PTS' : '+0 PTS';
+      cogBadge.style.background = result.cogCorrect ? '#E6F9EE' : '#FEECEB';
+      cogBadge.style.color = result.cogCorrect ? '#0B8A3E' : '#C8322B';
+    }
+
+    if (promptVal) {
+      promptVal.textContent = result.promptBonus ? 'Within 2 Hours Window' : 'Standard Window';
+    }
+    if (promptBadge) {
+      promptBadge.textContent = result.promptBonus ? '+10 PTS' : '+0 PTS';
+      promptBadge.style.background = result.promptBonus ? '#E6F9EE' : '#F0F2F5';
+      promptBadge.style.color = result.promptBonus ? '#0B8A3E' : 'var(--text-light-secondary)';
+    }
+
+    if (roundPts) roundPts.textContent = `+${result.pointsAwarded || 0} PTS`;
+    if (totalPts) totalPts.textContent = `${result.totalPoints || result.pointsAwarded || 0} PTS`;
+
+    loadLeaderboardTable();
+  }
 
   openBtns.forEach(btn => {
     if (btn) {
@@ -428,6 +497,7 @@ function initUploadModal() {
         if (nameEl) nameEl.textContent = user.user_metadata?.display_name || user.email.split('@')[0];
         if (emailEl) emailEl.textContent = user.email;
 
+        resetModalState();
         modal.style.display = 'flex';
       });
     }
@@ -436,19 +506,45 @@ function initUploadModal() {
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       modal.style.display = 'none';
+      resetModalState();
     });
   }
 
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.style.display = 'none';
+      resetModalState();
     }
   });
+
+  if (gotoLbBtn) {
+    gotoLbBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      resetModalState();
+      const lbSection = document.getElementById('leaderboard');
+      if (lbSection) {
+        lbSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
+
+  if (submitAnotherBtn) {
+    submitAnotherBtn.addEventListener('click', () => {
+      if (form) form.reset();
+      resetModalState();
+    });
+  }
 
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!window.cmdSupabase) return;
+
+      if (submitBtn && submitBtn.getAttribute('data-state') === 'ready_results' && latestResult) {
+        displayResults(latestResult, lastMass, lastCog);
+        submitBtn.removeAttribute('data-state');
+        return;
+      }
 
       const user = await window.cmdSupabase.getCurrentUser();
       if (!user) {
@@ -480,7 +576,11 @@ function initUploadModal() {
         return;
       }
 
-      showToast('Uploading CAD documentation...', 'info');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Evaluating Model...';
+      }
+      showToast('Uploading and evaluating CAD submission...', 'info');
 
       try {
         let pdfUrl = '#';
@@ -501,20 +601,26 @@ function initUploadModal() {
           submitted_cog: submittedCog
         });
 
-        if (result) {
-          const massMsg = submittedMass != null ? (result.massCorrect ? 'Mass correct. +30 pts.' : 'Mass off. +0 pts.') : '';
-          const cogMsg = submittedCog != null ? (result.cogCorrect ? 'CoG correct. +15 pts.' : 'CoG off. +0 pts.') : '';
-          const parts = [massMsg, cogMsg].filter(Boolean);
-          const totalMsg = result.pointsAwarded > 0 ? `Total ${result.pointsAwarded} pts awarded. Upload count recorded.` : 'Upload count recorded.';
-          showToast([...parts, totalMsg].join(' '), result.pointsAwarded > 0 ? 'success' : 'info');
-        } else {
-          showToast('CAD model PDF submitted successfully. Upload count recorded.', 'success');
+        latestResult = result;
+        lastMass = submittedMass;
+        lastCog = submittedCog;
+
+        loadLeaderboardTable();
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.setAttribute('data-state', 'ready_results');
+          submitBtn.textContent = 'View Results \u2192';
+          submitBtn.style.background = 'var(--neon-green)';
+          submitBtn.style.color = '#000000';
         }
 
-        form.reset();
-        modal.style.display = 'none';
-        loadLeaderboardTable();
+        showToast('Evaluation complete. Click View Results to view your score.', 'success');
       } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Upload Model for Evaluation \u2192';
+        }
         showToast(err.message || 'Submission encountered an error', 'error');
       }
     });
