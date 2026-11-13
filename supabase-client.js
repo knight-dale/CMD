@@ -1,4 +1,4 @@
-const SUPABASE_URL = 'https://zjgfjzxvtosclwjfbafg.supabase.co';
+﻿const SUPABASE_URL = 'https://zjgfjzxvtosclwjfbafg.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sdiVwLUkWBB0PqUjKEm1YA_d50-DQjQ';
 const GOOGLE_SCRIPT_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxy8Up4A5UHCEdPXsj2GHYdCYA-QQ-O2Se9HBkHsQlWhaID8stZJe8vEeY62ii5_GTGTg/exec';
 
@@ -334,127 +334,61 @@ async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
 
 async function submitChallengeEntryWithScoring(entryData) {
   let backendResult = null;
+  let backendError = null;
+
   try {
     backendResult = await sendToBackend('submit_challenge_entry', { entry: entryData });
   } catch (err) {
+    backendError = err;
   }
-
-  const challenge = await fetchCurrentChallenge();
-
-  let massTier = 'OFF';
-  let massPoints = 0;
-  let cogTier = 'OFF';
-  let cogPoints = 0;
-  let promptBonus = false;
-  let pointsAwarded = 0;
-  // Track if prompt bonus should be applied (first three correct submissions within 2h)
 
   if (backendResult) {
-    massTier = backendResult.massTier || (backendResult.massPoints === 30 ? 'EXACT' : (backendResult.massPoints === 15 || backendResult.massCorrect ? 'TOLERANCE' : 'OFF'));
-    cogTier = backendResult.cogTier || (backendResult.cogPoints === 15 ? 'EXACT' : (backendResult.cogPoints === 7 || backendResult.cogCorrect ? 'TOLERANCE' : 'OFF'));
-    massPoints = massTier === 'EXACT' ? 30 : (massTier === 'TOLERANCE' ? 15 : 0);
-    cogPoints = cogTier === 'EXACT' ? 15 : (cogTier === 'TOLERANCE' ? 7 : 0);
-    promptBonus = !!backendResult.promptBonus;
-    pointsAwarded = backendResult.pointsAwarded !== undefined ? backendResult.pointsAwarded : (massPoints + cogPoints + (promptBonus ? 10 : 0));
-  } else if (challenge) {
-    if (challenge.answer_mass != null && entryData.submitted_mass != null) {
-      const tol = challenge.answer_mass_tolerance != null ? parseFloat(challenge.answer_mass_tolerance) : 0.05;
-      const diff = Math.abs(entryData.submitted_mass - challenge.answer_mass);
-      if (diff < 0.001) {
-        massTier = 'EXACT';
-        massPoints = 30;
-      } else if (diff <= tol) {
-        massTier = 'TOLERANCE';
-        massPoints = 15;
-      } else {
-        massTier = 'OFF';
-        massPoints = 0;
-      }
-    }
-    if (challenge.answer_cog != null && entryData.submitted_cog != null) {
-      const tol = challenge.answer_cog_tolerance != null ? parseFloat(challenge.answer_cog_tolerance) : 2.0;
-      const diff = Math.abs(entryData.submitted_cog - challenge.answer_cog);
-      if (diff < 0.001) {
-        cogTier = 'EXACT';
-        cogPoints = 15;
-      } else if (diff <= tol) {
-        cogTier = 'TOLERANCE';
-        cogPoints = 7;
-      } else {
-        cogTier = 'OFF';
-        cogPoints = 0;
-      }
-    }
-    if (challenge && challenge.id && challenge.start_date) {
-      const startTime = new Date(challenge.start_date).getTime();
-      const now = Date.now();
-      const withinWindow = !isNaN(startTime) && now >= startTime &&
-                           (now - startTime) <= (2 * 60 * 60 * 1000);
+    const massTier = backendResult.massTier || 'OFF';
+    const cogTier = backendResult.cogTier || 'OFF';
+    const massPoints = massTier === 'EXACT' ? 30 : (massTier === 'TOLERANCE' ? 15 : 0);
+    const cogPoints = cogTier === 'EXACT' ? 15 : (cogTier === 'TOLERANCE' ? 7 : 0);
+    const promptBonus = !!backendResult.promptBonus;
+    const pointsAwarded = backendResult.pointsAwarded !== undefined
+      ? backendResult.pointsAwarded
+      : (massPoints + cogPoints + (promptBonus ? 10 : 0));
+    const massCorrect = massTier !== 'OFF';
+    const cogCorrect = cogTier !== 'OFF';
+    const client = getClient();
+    let totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
 
-      if (withinWindow && (massCorrect || cogCorrect)) {
-        try {
-          const { data: subs, error } = await client
-            .from('challenge_submissions')
-            .select('prompt_bonus')
-            .eq('challenge_id', challenge.id);
-
-          if (!error && subs) {
-            const alreadyAwarded = subs.filter(s => s.prompt_bonus).length;
-             if (alreadyAwarded < 3) {
-              promptBonus = true;   // this entry receives the +10 bonus
-            }
-          }
-        } catch { /* ignore DB errors – just don’t give the bonus */ }
-      }
+    if (client) {
+      try {
+        await client.from('challenge_submissions').insert([{
+          member_name: entryData.member_name,
+          member_email: (entryData.member_email || '').toLowerCase().trim(),
+          model_title: entryData.model_title,
+          pdf_url: entryData.pdf_url,
+          notes: entryData.notes || '',
+          submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
+          submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
+          mass_correct: massCorrect,
+          cog_correct: cogCorrect,
+          prompt_bonus: promptBonus,
+          points_awarded: pointsAwarded
+        }]);
+      } catch {}
+      try {
+        const lbRes = await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+        if (lbRes && lbRes.totalPoints !== undefined) {
+          totalPoints = lbRes.totalPoints;
+        }
+      } catch {}
     }
-    pointsAwarded = massPoints + cogPoints + (promptBonus ? 10 : 0);
+
+    return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints };
   }
 
-  const massCorrect = massTier !== 'OFF';
-  const cogCorrect = cogTier !== 'OFF';
-
-  let totalPoints = backendResult && backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
-  const client = getClient();
-  if (client) {
-    const submissionPayload = {
-      member_name: entryData.member_name,
-      member_email: (entryData.member_email || '').toLowerCase().trim(),
-      model_title: entryData.model_title,
-      pdf_url: entryData.pdf_url,
-      notes: entryData.notes || '',
-      submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
-      submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
-      mass_correct: massCorrect,
-      cog_correct: cogCorrect,
-      prompt_bonus: promptBonus,
-      points_awarded: pointsAwarded
-    };
-    try {
-      await client.from('challenge_submissions').insert([submissionPayload]);
-    } catch {
-    }
-    try {
-      const lbRes = await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
-      if (lbRes && lbRes.totalPoints !== undefined) {
-        totalPoints = lbRes.totalPoints;
-      }
-    } catch {
-    }
+  if (backendError) {
+    throw backendError;
   }
 
-  return {
-    massCorrect,
-    cogCorrect,
-    massTier,
-    cogTier,
-    massPoints,
-    cogPoints,
-    promptBonus,
-    pointsAwarded,
-    totalPoints
-  };
+  throw new Error('Submission could not be processed. Please try again.');
 }
-
 async function addProject(projectData) {
   const client = getClient();
   if (client) {

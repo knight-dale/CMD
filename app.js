@@ -1,4 +1,4 @@
-const fallbackProjects = [
+﻿const fallbackProjects = [
   {
     id: 'p1',
     title: 'Formula Student',
@@ -566,12 +566,12 @@ function initUploadModal() {
         return;
       }
 
+      if (submitBtn && submitBtn.disabled) return;
+
       const user = await window.cmdSupabase.getCurrentUser();
       if (!user) {
         showToast('Please sign in to submit CAD models', 'error');
-        setTimeout(() => {
-          window.location.href = 'auth.html';
-        }, 800);
+        setTimeout(() => { window.location.href = 'auth.html'; }, 800);
         return;
       }
 
@@ -596,13 +596,14 @@ function initUploadModal() {
         return;
       }
 
-    // ---- Prevent double‑click submissions
-    if (submitBtn && submitBtn.disabled) return;   // already in progress
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Submitting…';
-      submitBtn.style.opacity = '0.6';
-    }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        submitBtn.style.opacity = '0.65';
+        submitBtn.style.background = '';
+        submitBtn.style.color = '';
+      }
+
       showToast('Uploading and evaluating CAD submission...', 'info');
 
       try {
@@ -631,19 +632,22 @@ function initUploadModal() {
         loadLeaderboardTable();
 
         if (submitBtn) {
-        submitBtn.setAttribute('data‑state', 'ready_results');
-        submitBtn.textContent = 'View Results →';
-        submitBtn.style.background = 'var(--neon-green)';
-        submitBtn.style.color = '#000';
-        submitBtn.disabled = false;          // allow the “View Results” click
-      }
-
+          submitBtn.disabled = false;
+          submitBtn.setAttribute('data-state', 'ready_results');
+          submitBtn.textContent = 'View Results \u2192';
+          submitBtn.style.background = 'var(--neon-green)';
+          submitBtn.style.color = '#000000';
+          submitBtn.style.opacity = '1';
+        }
 
         showToast('Evaluation complete. Click View Results to view your score.', 'success');
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = 'Upload Model for Evaluation \u2192';
+          submitBtn.style.opacity = '1';
+          submitBtn.style.background = '';
+          submitBtn.style.color = '';
         }
         showToast(err.message || 'Submission encountered an error', 'error');
       }
@@ -660,19 +664,20 @@ document.addEventListener('DOMContentLoaded', () => {
   initSuggestionForm();
   loadLeaderboardTable();
   initUploadModal();
+
   let lastY = window.scrollY;
-    function handleNavScroll() {
-      const nav = document.querySelector('.site-nav');
-      if (!nav) return;
-      const curY = window.scrollY;
-      if (curY > lastY && curY > 80) {
-        nav.classList.add('hide');
-      } else {
-        nav.classList.remove('hide');
-      }
-      if (curY > 80) nav.classList.add('sticky');
-      else nav.classList.remove('sticky');
-      lastY = curY;
+  function handleNavScroll() {
+    const nav = document.querySelector('.site-nav');
+    if (!nav) return;
+    const curY = window.scrollY;
+    if (curY > lastY && curY > 80) {
+      nav.classList.add('hide');
+    } else {
+      nav.classList.remove('hide');
     }
-    window.addEventListener('scroll', handleNavScroll);
+    if (curY > 80) nav.classList.add('sticky');
+    else nav.classList.remove('sticky');
+    lastY = curY;
+  }
+  window.addEventListener('scroll', handleNavScroll);
 });
