@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Past Challenges | CMD Kimathi</title>
+  <meta name="description" content="Archive of weekly CAD design challenges, competition briefs, and engineering specifications from CMD Kimathi.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body id="top">
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <nav class="site-nav">
+    <div class="container nav-container">
+      <a href="index.html#top" class="nav-logo">
+        <span class="nav-logo-brand">CMD</span>
+        <span class="nav-logo-desc">MECHANICAL<br>DESIGN CLUB</span>
+      </a>
+
+      <ul class="nav-menu">
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="index.html#projects">Projects</a></li>
+        <li><a href="index.html#process">Process</a></li>
+        <li><a href="index.html#challenge">Challenge</a></li>
+        <li><a href="index.html#community">Community</a></li>
+        <li><a href="index.html#leaderboard">Standings</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <div id="auth-unauthenticated">
+          <a href="auth.html" class="btn-green" id="top-login-btn">Let's build together &nearr;</a>
+        </div>
+
+        <div id="auth-authenticated" style="display:none;position:relative;">
+          <button type="button" class="user-profile-btn" id="user-profile-toggle" aria-expanded="false">
+            <span class="user-avatar-circle" id="user-nav-avatar">U</span>
+            <span id="user-nav-name">Engineer</span>
+            <span style="font-size:0.7rem;color:var(--text-dark-secondary);">&dtrif;</span>
+          </button>
+          <div class="profile-dropdown" id="profile-dropdown-menu">
+            <div class="dropdown-user-header">
+              <div class="dropdown-user-name" id="dropdown-name">Engineer</div>
+              <div class="dropdown-user-email" id="dropdown-email">designer@students.dkut.ac.ke</div>
+            </div>
+            <a href="admin.html" class="dropdown-link" id="nav-admin-link" style="display:none;">Admin Console &nearr;</a>
+            <button type="button" class="dropdown-link logout" id="logout-button">Sign Out</button>
+          </div>
+        </div>
+
+        <button type="button" class="nav-hamburger" id="nav-hamburger-btn" aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="mobile-nav-pane" id="mobile-nav-pane">
+    <a href="index.html#about" class="mobile-link">About</a>
+    <a href="index.html#projects" class="mobile-link">Projects</a>
+    <a href="index.html#process" class="mobile-link">Process</a>
+    <a href="index.html#challenge" class="mobile-link">Challenge</a>
+    <a href="index.html#community" class="mobile-link">Community</a>
+    <a href="index.html#leaderboard" class="mobile-link">Standings</a>
+    <a href="auth.html" class="btn-green" id="mobile-auth-cta" style="margin-top:12px;text-align:center;">Join or Sign In &nearr;</a>
+  </div>
+
+  <header class="section-dark" style="padding:120px 0 60px;">
+    <div class="container">
+      <div style="max-width:760px;">
+        <span class="mono-tag orange">COMPETITION ARCHIVE</span>
+        <h1 style="font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight:800; letter-spacing:-0.03em; margin:16px 0 16px; line-height:1.08;">
+          Past Weekly CAD Challenges.
+        </h1>
+        <p style="color:var(--text-dark-secondary); font-size:1.05rem; line-height:1.65; margin-bottom:28px;">
+          Review previous competition briefs, kinematic requirements, and component mass benchmarks from the Center for Mechanical Design weekly sprint challenges.
+        </p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <a href="index.html#challenge" class="btn-green">&larr; Return to Active Live Challenge</a>
+          <a href="index.html#leaderboard" class="btn-dark-outline">View Overall Standings &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="section-cream" style="min-height:55vh;padding:60px 0 90px;">
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;flex-wrap:wrap;gap:16px;">
+        <div>
+          <span class="mono-tag muted-light">HISTORICAL BRIEFS</span>
+          <h2 style="font-size:1.85rem;font-weight:700;letter-spacing:-0.02em;margin-top:4px;">Recorded Sprint Competitions</h2>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:0.85rem;color:var(--text-light-secondary);" id="challenges-count-badge">
+          Loading archive...
+        </div>
+      </div>
+
+      <div id="past-challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:24px;">
+        <div style="background:#FFFFFF;border:1px solid var(--border-light);border-radius:4px;padding:32px;text-align:center;grid-column:1/-1;">
+          <p style="color:var(--text-light-secondary);font-size:0.95rem;">Loading past engineering challenges...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer-dark">
+    <div class="container">
+      <div class="footer-top">
+        <div class="nav-logo">
+          <span class="nav-logo-brand">CMD</span>
+          <span class="nav-logo-desc">MAKE THINGS.<br>MAKE A DIFFERENCE.</span>
+        </div>
+        <div class="footer-links-row">
+          <a href="index.html#challenge">Active Challenge &rarr;</a>
+          <a href="index.html#leaderboard">Standings &rarr;</a>
+          <a href="auth.html">Member Portal &nearr;</a>
+        </div>
+      </div>
+      <div class="footer-bottom-row">
+        <span>&copy; 2026 MECHANICAL DESIGN CLUB</span>
+        <span>DESIGNED TO KEEP MOVING.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="supabase-client.js"></script>
+  <script src="challenges.js"></script>
+</body>
+</html>

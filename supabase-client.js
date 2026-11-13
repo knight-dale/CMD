@@ -339,37 +339,63 @@ async function submitChallengeEntryWithScoring(entryData) {
   } catch (err) {
   }
 
-  let massCorrect = backendResult ? !!backendResult.massCorrect : false;
-  let cogCorrect = backendResult ? !!backendResult.cogCorrect : false;
-  let promptBonus = backendResult ? !!backendResult.promptBonus : false;
-  let pointsAwarded = backendResult && backendResult.pointsAwarded !== undefined ? backendResult.pointsAwarded : 0;
-
   const challenge = await fetchCurrentChallenge();
 
-  if (!backendResult) {
-    if (challenge) {
-      if (challenge.answer_mass != null && entryData.submitted_mass != null) {
-        const tol = challenge.answer_mass_tolerance != null ? parseFloat(challenge.answer_mass_tolerance) : 0.05;
-        const diff = Math.abs(entryData.submitted_mass - challenge.answer_mass);
-        massCorrect = diff <= tol;
-        if (massCorrect) pointsAwarded += 30;
-      }
-      if (challenge.answer_cog != null && entryData.submitted_cog != null) {
-        const tol = challenge.answer_cog_tolerance != null ? parseFloat(challenge.answer_cog_tolerance) : 2.0;
-        const diff = Math.abs(entryData.submitted_cog - challenge.answer_cog);
-        cogCorrect = diff <= tol;
-        if (cogCorrect) pointsAwarded += 15;
-      }
-      if (challenge.start_date) {
-        const startTime = new Date(challenge.start_date).getTime();
-        const now = Date.now();
-        if (!isNaN(startTime) && now >= startTime && (now - startTime) <= (2 * 60 * 60 * 1000)) {
-          promptBonus = true;
-          pointsAwarded += 10;
-        }
+  let massTier = 'OFF';
+  let massPoints = 0;
+  let cogTier = 'OFF';
+  let cogPoints = 0;
+  let promptBonus = false;
+  let pointsAwarded = 0;
+
+  if (backendResult) {
+    massTier = backendResult.massTier || (backendResult.massPoints === 30 ? 'EXACT' : (backendResult.massPoints === 15 || backendResult.massCorrect ? 'TOLERANCE' : 'OFF'));
+    cogTier = backendResult.cogTier || (backendResult.cogPoints === 15 ? 'EXACT' : (backendResult.cogPoints === 7 || backendResult.cogCorrect ? 'TOLERANCE' : 'OFF'));
+    massPoints = massTier === 'EXACT' ? 30 : (massTier === 'TOLERANCE' ? 15 : 0);
+    cogPoints = cogTier === 'EXACT' ? 15 : (cogTier === 'TOLERANCE' ? 7 : 0);
+    promptBonus = !!backendResult.promptBonus;
+    pointsAwarded = backendResult.pointsAwarded !== undefined ? backendResult.pointsAwarded : (massPoints + cogPoints + (promptBonus ? 10 : 0));
+  } else if (challenge) {
+    if (challenge.answer_mass != null && entryData.submitted_mass != null) {
+      const tol = challenge.answer_mass_tolerance != null ? parseFloat(challenge.answer_mass_tolerance) : 0.05;
+      const diff = Math.abs(entryData.submitted_mass - challenge.answer_mass);
+      if (diff < 0.001) {
+        massTier = 'EXACT';
+        massPoints = 30;
+      } else if (diff <= tol) {
+        massTier = 'TOLERANCE';
+        massPoints = 15;
+      } else {
+        massTier = 'OFF';
+        massPoints = 0;
       }
     }
+    if (challenge.answer_cog != null && entryData.submitted_cog != null) {
+      const tol = challenge.answer_cog_tolerance != null ? parseFloat(challenge.answer_cog_tolerance) : 2.0;
+      const diff = Math.abs(entryData.submitted_cog - challenge.answer_cog);
+      if (diff < 0.001) {
+        cogTier = 'EXACT';
+        cogPoints = 15;
+      } else if (diff <= tol) {
+        cogTier = 'TOLERANCE';
+        cogPoints = 7;
+      } else {
+        cogTier = 'OFF';
+        cogPoints = 0;
+      }
+    }
+    if (challenge.start_date) {
+      const startTime = new Date(challenge.start_date).getTime();
+      const now = Date.now();
+      if (!isNaN(startTime) && now >= startTime && (now - startTime) <= (2 * 60 * 60 * 1000)) {
+        promptBonus = true;
+      }
+    }
+    pointsAwarded = massPoints + cogPoints + (promptBonus ? 10 : 0);
   }
+
+  const massCorrect = massTier !== 'OFF';
+  const cogCorrect = cogTier !== 'OFF';
 
   let totalPoints = backendResult && backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
   const client = getClient();
@@ -403,6 +429,10 @@ async function submitChallengeEntryWithScoring(entryData) {
   return {
     massCorrect,
     cogCorrect,
+    massTier,
+    cogTier,
+    massPoints,
+    cogPoints,
     promptBonus,
     pointsAwarded,
     totalPoints

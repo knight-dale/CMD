@@ -449,16 +449,36 @@ function initUploadModal() {
 
     if (massVal) massVal.textContent = mass != null ? `${mass} kg` : 'N/A';
     if (massBadge) {
-      massBadge.textContent = result.massCorrect ? '+30 PTS' : '+0 PTS';
-      massBadge.style.background = result.massCorrect ? '#E6F9EE' : '#FEECEB';
-      massBadge.style.color = result.massCorrect ? '#0B8A3E' : '#C8322B';
+      if (result.massTier === 'EXACT' || result.massPoints === 30) {
+        massBadge.textContent = 'EXACT (+30 PTS)';
+        massBadge.style.background = '#E6F9EE';
+        massBadge.style.color = '#0B8A3E';
+      } else if (result.massTier === 'TOLERANCE' || result.massPoints === 15) {
+        massBadge.textContent = 'IN TOLERANCE (+15 PTS)';
+        massBadge.style.background = '#E8F0FE';
+        massBadge.style.color = '#1A73E8';
+      } else {
+        massBadge.textContent = 'OFF TOLERANCE (+0 PTS)';
+        massBadge.style.background = '#FEECEB';
+        massBadge.style.color = '#C8322B';
+      }
     }
 
     if (cogVal) cogVal.textContent = cog != null ? `${cog} mm` : 'N/A';
     if (cogBadge) {
-      cogBadge.textContent = result.cogCorrect ? '+15 PTS' : '+0 PTS';
-      cogBadge.style.background = result.cogCorrect ? '#E6F9EE' : '#FEECEB';
-      cogBadge.style.color = result.cogCorrect ? '#0B8A3E' : '#C8322B';
+      if (result.cogTier === 'EXACT' || result.cogPoints === 15) {
+        cogBadge.textContent = 'EXACT (+15 PTS)';
+        cogBadge.style.background = '#E6F9EE';
+        cogBadge.style.color = '#0B8A3E';
+      } else if (result.cogTier === 'TOLERANCE' || result.cogPoints === 7) {
+        cogBadge.textContent = 'IN TOLERANCE (+7 PTS)';
+        cogBadge.style.background = '#E8F0FE';
+        cogBadge.style.color = '#1A73E8';
+      } else {
+        cogBadge.textContent = 'OFF TOLERANCE (+0 PTS)';
+        cogBadge.style.background = '#FEECEB';
+        cogBadge.style.color = '#C8322B';
+      }
     }
 
     if (promptVal) {
