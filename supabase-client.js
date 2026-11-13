@@ -216,6 +216,80 @@ async function submitChallengeEntry(entryData) {
   return await sendToBackend('submit_challenge_entry', { entry: entryData });
 }
 
+async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
+  const client = getClient();
+  if (!client) return;
+  const { data: existing } = await client
+    .from('leaderboard')
+    .select('id, points, submission_count')
+    .eq('member_email', email)
+    .maybeSingle();
+  if (existing) {
+    await client.from('leaderboard').update({
+      points: (existing.points || 0) + pointsToAdd,
+      submission_count: (existing.submission_count || 0) + 1
+    }).eq('id', existing.id);
+  } else {
+    await client.from('leaderboard').insert([{
+      member_email: email,
+      display_name: name,
+      points: pointsToAdd,
+      submission_count: 1,
+      badges: []
+    }]);
+  }
+}
+
+async function submitChallengeEntryWithScoring(entryData) {
+  const client = getClient();
+  const challenge = await fetchCurrentChallenge();
+
+  let massCorrect = false;
+  let cogCorrect = false;
+  let pointsAwarded = 0;
+
+  if (challenge) {
+    if (challenge.answer_mass != null && entryData.submitted_mass != null) {
+      const tol = (challenge.answer_mass_tolerance || 5) / 100;
+      const diff = Math.abs(entryData.submitted_mass - challenge.answer_mass);
+      massCorrect = diff <= challenge.answer_mass * tol;
+      if (massCorrect) pointsAwarded += 50;
+    }
+    if (challenge.answer_cog != null && entryData.submitted_cog != null) {
+      const tol = (challenge.answer_cog_tolerance || 10) / 100;
+      const diff = Math.abs(entryData.submitted_cog - challenge.answer_cog);
+      cogCorrect = diff <= challenge.answer_cog * tol;
+      if (cogCorrect) pointsAwarded += 30;
+    }
+  }
+
+  const submissionPayload = {
+    member_name: entryData.member_name,
+    member_email: entryData.member_email,
+    model_title: entryData.model_title,
+    pdf_url: entryData.pdf_url,
+    notes: entryData.notes || '',
+    challenge_id: challenge ? challenge.id : null,
+    submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
+    submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
+    mass_correct: massCorrect,
+    cog_correct: cogCorrect,
+    points_awarded: pointsAwarded
+  };
+
+  if (client) {
+    const { error } = await client.from('challenge_submissions').insert([submissionPayload]);
+    if (error) throw error;
+    if (pointsAwarded > 0) {
+      await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+    }
+  } else {
+    await sendToBackend('submit_challenge_entry', { entry: submissionPayload });
+  }
+
+  return { massCorrect, cogCorrect, pointsAwarded };
+}
+
 async function addProject(projectData) {
   const client = getClient();
   if (client) {
@@ -419,6 +493,8 @@ window.cmdSupabase = {
   voteOnSuggestion,
   uploadFile,
   submitChallengeEntry,
+  submitChallengeEntryWithScoring,
+  upsertLeaderboardByEmail,
   fetchSubmissions,
   fetchAllChallenges,
   addProject,

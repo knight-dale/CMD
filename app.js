@@ -434,6 +434,10 @@ function initUploadModal() {
       const title = document.getElementById('entry-title').value;
       const notes = document.getElementById('entry-notes').value;
       const fileInput = document.getElementById('entry-pdf');
+      const massInput = document.getElementById('entry-mass');
+      const cogInput = document.getElementById('entry-cog');
+      const submittedMass = massInput && massInput.value !== '' ? parseFloat(massInput.value) : null;
+      const submittedCog = cogInput && cogInput.value !== '' ? parseFloat(cogInput.value) : null;
 
       if (!fileInput.files || fileInput.files.length === 0) {
         showToast('Please select a PDF document', 'error');
@@ -458,16 +462,27 @@ function initUploadModal() {
             pdfUrl = 'uploaded_locally';
           }
 
-          await window.cmdSupabase.submitChallengeEntry({
+          const result = await window.cmdSupabase.submitChallengeEntryWithScoring({
             member_name: name,
             member_email: email,
             model_title: title,
             pdf_url: pdfUrl,
-            notes
+            notes,
+            submitted_mass: submittedMass,
+            submitted_cog: submittedCog
           });
+
+          if (result && (result.massCorrect || result.cogCorrect || result.pointsAwarded === 0)) {
+            const massMsg = submittedMass != null ? (result.massCorrect ? 'Mass correct. +50 pts.' : 'Mass off. +0 pts.') : '';
+            const cogMsg = submittedCog != null ? (result.cogCorrect ? 'CoG correct. +30 pts.' : 'CoG off. +0 pts.') : '';
+            const parts = [massMsg, cogMsg].filter(Boolean);
+            const totalMsg = result.pointsAwarded > 0 ? `Total ${result.pointsAwarded} pts awarded.` : 'No points awarded this submission.';
+            showToast([...parts, totalMsg].join(' '), result.pointsAwarded > 0 ? 'success' : 'info');
+          } else {
+            showToast('CAD model PDF submitted successfully', 'success');
+          }
         }
 
-        showToast('CAD model PDF submitted successfully', 'success');
         form.reset();
         modal.style.display = 'none';
       } catch (err) {

@@ -226,6 +226,10 @@ function initChallengePublishForm() {
     const end = document.getElementById('c-end').value;
     const desc = document.getElementById('c-desc').value;
     const isActive = document.getElementById('c-active').checked;
+    const answerMassInput = document.getElementById('c-answer-mass').value;
+    const massTolInput = document.getElementById('c-mass-tol').value;
+    const answerCogInput = document.getElementById('c-answer-cog').value;
+    const cogTolInput = document.getElementById('c-cog-tol').value;
 
     let pdfUrl = document.getElementById('c-pdf-url').value.trim();
     const pdfFile = document.getElementById('c-pdf-file').files[0];
@@ -245,7 +249,11 @@ function initChallengePublishForm() {
         end_date: end,
         description: desc,
         brief_pdf_url: pdfUrl,
-        is_active: isActive
+        is_active: isActive,
+        answer_mass: answerMassInput !== '' ? parseFloat(answerMassInput) : null,
+        answer_mass_tolerance: massTolInput !== '' ? parseFloat(massTolInput) : 5,
+        answer_cog: answerCogInput !== '' ? parseFloat(answerCogInput) : null,
+        answer_cog_tolerance: cogTolInput !== '' ? parseFloat(cogTolInput) : 10
       });
 
       showToast(`Week ${week} competition published`, 'success');
@@ -267,7 +275,7 @@ async function renderSubmissionsList() {
   }
 
   if (!subs || subs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
     return;
   }
 
@@ -276,16 +284,25 @@ async function renderSubmissionsList() {
     const tr = document.createElement('tr');
     const dateStr = s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent';
     const isCleanUrl = s.pdf_url && typeof s.pdf_url === 'string' && s.pdf_url !== '#' && !s.pdf_url.startsWith('file:') && !s.pdf_url.startsWith('C:') && !s.pdf_url.startsWith('D:');
+    const massOk = s.mass_correct ? 'YES' : 'NO';
+    const cogOk = s.cog_correct ? 'YES' : 'NO';
+    const massStyle = s.mass_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
+    const cogStyle = s.cog_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
 
     tr.innerHTML = `
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${dateStr}</td>
       <td style="font-weight:700;">${s.member_name}</td>
       <td style="font-size:0.8rem;color:var(--text-dark-secondary);">${s.member_email}</td>
       <td>${s.model_title}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? s.submitted_mass + ' kg' : 'N/A'}</td>
+      <td style="${massStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? massOk : 'N/A'}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? s.submitted_cog + ' mm' : 'N/A'}</td>
+      <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? cogOk : 'N/A'}</td>
+      <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
       <td>
         ${isCleanUrl ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF &nearr;</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}
       </td>
-      <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:240px;">${s.notes || 'None'}</td>
+      <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${s.notes || 'None'}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -307,9 +324,10 @@ async function renderLeaderboardAdmin() {
 
   tbody.innerHTML = '';
   entries.forEach((m, idx) => {
+    const computedRank = idx + 1;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="font-family:var(--font-mono);font-weight:700;">${m.rank || (idx + 1)}</td>
+      <td style="font-family:var(--font-mono);font-weight:700;">${computedRank}</td>
       <td style="font-weight:700;">${m.display_name}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${m.points}</td>
       <td style="font-size:0.75rem;color:var(--text-dark-secondary);">${(m.badges || []).join(', ')}</td>
@@ -325,7 +343,6 @@ async function renderLeaderboardAdmin() {
     const editBtn = tr.querySelector('.btn-edit-entry');
     editBtn.addEventListener('click', () => {
       document.getElementById('lb-id').value = m.id;
-      document.getElementById('lb-rank').value = m.rank || (idx + 1);
       document.getElementById('lb-name').value = m.display_name;
       document.getElementById('lb-points').value = m.points;
       document.getElementById('lb-count').value = m.submission_count || 0;
@@ -372,7 +389,6 @@ function initLeaderboardEditorForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('lb-id').value;
-    const rank = parseInt(document.getElementById('lb-rank').value, 10);
     const name = document.getElementById('lb-name').value;
     const points = parseInt(document.getElementById('lb-points').value, 10);
     const count = parseInt(document.getElementById('lb-count').value, 10);
@@ -383,7 +399,6 @@ function initLeaderboardEditorForm() {
     try {
       if (id) {
         await window.cmdSupabase.updateLeaderboardEntry(id, {
-          rank,
           display_name: name,
           points,
           submission_count: count,
@@ -392,7 +407,6 @@ function initLeaderboardEditorForm() {
         showToast('Member standings updated', 'success');
       } else {
         await window.cmdSupabase.addLeaderboardEntry({
-          rank,
           display_name: name,
           points,
           submission_count: count,

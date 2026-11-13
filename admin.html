@@ -164,6 +164,22 @@
                 <input type="checkbox" id="c-active" checked style="accent-color:var(--neon-green);width:18px;height:18px;">
                 <label for="c-active" style="font-size:0.85rem;color:#FFFFFF;">Set as Active Live Challenge (Deactivates earlier entries)</label>
               </div>
+              <div>
+                <label class="field-label">Correct Component Mass (kg)</label>
+                <input type="number" id="c-answer-mass" class="admin-field-input" placeholder="e.g. 3.72" min="0" step="0.001">
+              </div>
+              <div>
+                <label class="field-label">Mass Tolerance (%)</label>
+                <input type="number" id="c-mass-tol" class="admin-field-input" placeholder="5" min="0" max="50" step="0.1" value="5">
+              </div>
+              <div>
+                <label class="field-label">Correct Centre of Gravity (mm from origin)</label>
+                <input type="number" id="c-answer-cog" class="admin-field-input" placeholder="e.g. 48.6" min="0" step="0.001">
+              </div>
+              <div>
+                <label class="field-label">CoG Tolerance (%)</label>
+                <input type="number" id="c-cog-tol" class="admin-field-input" placeholder="10" min="0" max="50" step="0.1" value="10">
+              </div>
             </div>
             <button type="submit" class="btn-green" style="margin-top:24px;">Publish CAD Challenge &nearr;</button>
           </form>
@@ -204,12 +220,17 @@
                   <th>Member Name</th>
                   <th>Email</th>
                   <th>Model Title</th>
+                  <th>Mass (kg)</th>
+                  <th>Mass OK</th>
+                  <th>CoG (mm)</th>
+                  <th>CoG OK</th>
+                  <th>Pts</th>
                   <th>PDF Model</th>
-                  <th>Engineering Notes</th>
+                  <th>Notes</th>
                 </tr>
               </thead>
               <tbody id="submissions-table-body">
-                <tr><td colspan="6" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
+                <tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
               </tbody>
             </table>
           </div>
@@ -224,10 +245,6 @@
           <form id="leaderboard-admin-form">
             <input type="hidden" id="lb-id">
             <div class="admin-form-two-col">
-              <div>
-                <label class="field-label">Rank Position</label>
-                <input type="number" id="lb-rank" class="admin-field-input" required placeholder="1" min="1">
-              </div>
               <div>
                 <label class="field-label">Member Full Name</label>
                 <input type="text" id="lb-name" class="admin-field-input" required placeholder="e.g. Kelvin Mwangi">
