@@ -347,6 +347,7 @@ async function submitChallengeEntryWithScoring(entryData) {
   let cogPoints = 0;
   let promptBonus = false;
   let pointsAwarded = 0;
+  // Track if prompt bonus should be applied (first three correct submissions within 2h)
 
   if (backendResult) {
     massTier = backendResult.massTier || (backendResult.massPoints === 30 ? 'EXACT' : (backendResult.massPoints === 15 || backendResult.massCorrect ? 'TOLERANCE' : 'OFF'));
@@ -384,11 +385,26 @@ async function submitChallengeEntryWithScoring(entryData) {
         cogPoints = 0;
       }
     }
-    if (challenge.start_date) {
+    if (challenge && challenge.id && challenge.start_date) {
       const startTime = new Date(challenge.start_date).getTime();
       const now = Date.now();
-      if (!isNaN(startTime) && now >= startTime && (now - startTime) <= (2 * 60 * 60 * 1000)) {
-        promptBonus = true;
+      const withinWindow = !isNaN(startTime) && now >= startTime &&
+                           (now - startTime) <= (2 * 60 * 60 * 1000);
+
+      if (withinWindow && (massCorrect || cogCorrect)) {
+        try {
+          const { data: subs, error } = await client
+            .from('challenge_submissions')
+            .select('prompt_bonus')
+            .eq('challenge_id', challenge.id);
+
+          if (!error && subs) {
+            const alreadyAwarded = subs.filter(s => s.prompt_bonus).length;
+             if (alreadyAwarded < 3) {
+              promptBonus = true;   // this entry receives the +10 bonus
+            }
+          }
+        } catch { /* ignore DB errors – just don’t give the bonus */ }
       }
     }
     pointsAwarded = massPoints + cogPoints + (promptBonus ? 10 : 0);

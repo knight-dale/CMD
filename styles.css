@@ -156,6 +156,23 @@ button {
   transition: background var(--transition);
 }
 
+/* Sticky navigation – appears after scrolling past the hero */
+.site-nav.sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: var(--bg-dark);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease;
+}
+
+/* Hide the bar when scrolling down */
+.site-nav.hide {
+  transform: translateY(-100%);
+}
+
 .nav-container {
   display: flex;
   align-items: center;
