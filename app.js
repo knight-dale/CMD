@@ -1,4 +1,4 @@
-﻿const fallbackProjects = [
+const fallbackProjects = [
   {
     id: 'p1',
     title: 'Formula Student',
@@ -43,15 +43,20 @@ const fallbackLeaderboard = [
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
+  if (type === 'success' || type === 'error') {
+    const infos = container.querySelectorAll('.toast-msg.info');
+    infos.forEach(i => i.remove());
+  }
   const t = document.createElement('div');
   t.className = `toast-msg ${type}`;
   t.textContent = message;
   container.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('show'));
+  void t.offsetWidth;
+  t.classList.add('show');
   setTimeout(() => {
     t.classList.remove('show');
-    setTimeout(() => t.remove(), 260);
-  }, 3400);
+    setTimeout(() => t.remove(), 220);
+  }, 3000);
 }
 
 function initNavigation() {
@@ -309,22 +314,26 @@ async function handleSuggestionVote(id, btn) {
     return;
   }
 
+  votedKeys.push(id);
+  localStorage.setItem(`cmd_votes_${user.id}`, JSON.stringify(votedKeys));
+  btn.classList.add('voted');
+  btn.disabled = true;
+  const textSpan = btn.querySelector('.vote-btn-text');
+  if (textSpan) textSpan.textContent = 'Voted';
+  const countEl = document.getElementById(`count-${id}`);
+  const prevCount = countEl ? parseInt(countEl.textContent || '0', 10) : 0;
+  if (countEl) countEl.textContent = prevCount + 1;
+  showToast('Vote confirmed', 'success');
+
   try {
     await window.cmdSupabase.voteOnSuggestion(id);
-    votedKeys.push(id);
-    localStorage.setItem(`cmd_votes_${user.id}`, JSON.stringify(votedKeys));
-
-    btn.classList.add('voted');
-    btn.disabled = true;
-    const textSpan = btn.querySelector('.vote-btn-text');
-    if (textSpan) textSpan.textContent = 'Voted';
-
-    const countEl = document.getElementById(`count-${id}`);
-    if (countEl) {
-      countEl.textContent = parseInt(countEl.textContent || '0', 10) + 1;
-    }
-    showToast('Vote confirmed', 'success');
   } catch (err) {
+    const revertKeys = votedKeys.filter(k => k !== id);
+    localStorage.setItem(`cmd_votes_${user.id}`, JSON.stringify(revertKeys));
+    btn.classList.remove('voted');
+    btn.disabled = false;
+    if (textSpan) textSpan.textContent = 'Click to vote';
+    if (countEl) countEl.textContent = prevCount;
     showToast(err.message || 'Vote could not be registered', 'error');
   }
 }
@@ -371,6 +380,8 @@ function initSuggestionForm() {
   const input = document.getElementById('community-pitch-input');
   if (!form || !input) return;
 
+  const submitBtn = form.querySelector('button[type="submit"]');
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -387,6 +398,11 @@ function initSuggestionForm() {
       return;
     }
 
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting pitch...';
+    }
+
     try {
       await window.cmdSupabase.submitSuggestion(text);
       input.value = '';
@@ -394,6 +410,11 @@ function initSuggestionForm() {
       loadCommunitySuggestions();
     } catch (err) {
       showToast(err.message || 'Submission failed', 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Design Pitch \u2197';
+      }
     }
   });
 }
@@ -568,17 +589,6 @@ function initUploadModal() {
 
       if (submitBtn && submitBtn.disabled) return;
 
-      const user = await window.cmdSupabase.getCurrentUser();
-      if (!user) {
-        showToast('Please sign in to submit CAD models', 'error');
-        setTimeout(() => { window.location.href = 'auth.html'; }, 800);
-        return;
-      }
-
-      const name = user.user_metadata?.display_name || user.email.split('@')[0];
-      const email = user.email;
-      const title = 'CAD Competition Submission';
-      const notes = '';
       const fileInput = document.getElementById('entry-pdf');
       const massInput = document.getElementById('entry-mass');
       const cogInput = document.getElementById('entry-cog');
@@ -589,7 +599,6 @@ function initUploadModal() {
         showToast('Please select a PDF document', 'error');
         return;
       }
-
       const file = fileInput.files[0];
       if (file.type !== 'application/pdf') {
         showToast('Only PDF files are accepted for review', 'error');
@@ -599,31 +608,43 @@ function initUploadModal() {
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
-        submitBtn.style.opacity = '0.65';
+        submitBtn.style.opacity = '0.6';
         submitBtn.style.background = '';
         submitBtn.style.color = '';
       }
 
-      showToast('Uploading and evaluating CAD submission...', 'info');
+      showToast('Uploading and evaluating model...', 'info');
+
+      const user = await window.cmdSupabase.getCurrentUser();
+      if (!user) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Upload Model for Evaluation \u2192';
+          submitBtn.style.opacity = '1';
+        }
+        showToast('Please sign in to submit CAD models', 'error');
+        setTimeout(() => { window.location.href = 'auth.html'; }, 800);
+        return;
+      }
+
+      const name = user.user_metadata?.display_name || user.email.split('@')[0];
+      const email = user.email;
+      const path = `submissions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const pdfUrl = window.cmdSupabase.getPublicUrl('submissions', path);
 
       try {
-        let pdfUrl = '#';
-        const path = `submissions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        try {
-          pdfUrl = await window.cmdSupabase.uploadFile('submissions', path, file);
-        } catch {
-          pdfUrl = 'uploaded_locally';
-        }
-
-        const result = await window.cmdSupabase.submitChallengeEntryWithScoring({
+        const uploadTask = window.cmdSupabase.uploadFile('submissions', path, file).catch(() => 'uploaded_locally');
+        const scoringTask = window.cmdSupabase.submitChallengeEntryWithScoring({
           member_name: name,
           member_email: email,
-          model_title: title,
+          model_title: 'CAD Competition Submission',
           pdf_url: pdfUrl,
-          notes,
+          notes: '',
           submitted_mass: submittedMass,
           submitted_cog: submittedCog
         });
+
+        const [uploadedUrl, result] = await Promise.all([uploadTask, scoringTask]);
 
         latestResult = result;
         lastMass = submittedMass;
@@ -640,7 +661,7 @@ function initUploadModal() {
           submitBtn.style.opacity = '1';
         }
 
-        showToast('Evaluation complete. Click View Results to view your score.', 'success');
+        showToast('Done! Click View Results to see your score.', 'success');
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;

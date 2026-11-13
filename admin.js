@@ -1,15 +1,20 @@
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
+  if (type === 'success' || type === 'error') {
+    const infos = container.querySelectorAll('.toast-msg.info');
+    infos.forEach(i => i.remove());
+  }
   const t = document.createElement('div');
   t.className = `toast-msg ${type}`;
   t.textContent = message;
   container.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('show'));
+  void t.offsetWidth;
+  t.classList.add('show');
   setTimeout(() => {
     t.classList.remove('show');
-    setTimeout(() => t.remove(), 260);
-  }, 3400);
+    setTimeout(() => t.remove(), 220);
+  }, 3000);
 }
 
 function initAdminNavigation() {

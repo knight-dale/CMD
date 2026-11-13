@@ -1,13 +1,19 @@
-﻿const SUPABASE_URL = 'https://zjgfjzxvtosclwjfbafg.supabase.co';
+const SUPABASE_URL = 'https://zjgfjzxvtosclwjfbafg.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sdiVwLUkWBB0PqUjKEm1YA_d50-DQjQ';
 const GOOGLE_SCRIPT_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxy8Up4A5UHCEdPXsj2GHYdCYA-QQ-O2Se9HBkHsQlWhaID8stZJe8vEeY62ii5_GTGTg/exec';
 
 let supabaseClientInstance = null;
+let cachedUser = null;
+let cachedIsAdmin = null;
 
 function initSupabase() {
   if (typeof window !== 'undefined' && window.supabase) {
     if (!supabaseClientInstance && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
       supabaseClientInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClientInstance.auth.onAuthStateChange((event, session) => {
+        cachedUser = session ? session.user : null;
+        if (!cachedUser) cachedIsAdmin = null;
+      });
     }
     return supabaseClientInstance;
   }
@@ -22,11 +28,18 @@ function getClient() {
 }
 
 async function getCurrentUser() {
+  if (cachedUser) return cachedUser;
   const client = getClient();
   if (!client) return null;
   try {
+    const { data: { session } } = await client.auth.getSession();
+    if (session && session.user) {
+      cachedUser = session.user;
+      return cachedUser;
+    }
     const { data: { user }, error } = await client.auth.getUser();
     if (error) return null;
+    cachedUser = user;
     return user;
   } catch {
     return null;
@@ -71,6 +84,8 @@ function getDisplayName(user) {
 }
 
 async function signOut() {
+  cachedUser = null;
+  cachedIsAdmin = null;
   const client = getClient();
   if (!client) return;
   const { error } = await client.auth.signOut();
@@ -207,6 +222,13 @@ async function uploadFile(bucketName, filePath, fileObj) {
   if (error) throw error;
   const { data: publicUrlData } = client.storage.from(bucketName).getPublicUrl(data.path);
   return publicUrlData.publicUrl;
+}
+
+function getPublicUrl(bucketName, filePath) {
+  const client = getClient();
+  if (!client) return '#';
+  const { data } = client.storage.from(bucketName).getPublicUrl(filePath);
+  return data ? data.publicUrl : '#';
 }
 
 async function fetchSubmissions(challengeId) {
@@ -357,27 +379,21 @@ async function submitChallengeEntryWithScoring(entryData) {
     let totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
 
     if (client) {
-      try {
-        await client.from('challenge_submissions').insert([{
-          member_name: entryData.member_name,
-          member_email: (entryData.member_email || '').toLowerCase().trim(),
-          model_title: entryData.model_title,
-          pdf_url: entryData.pdf_url,
-          notes: entryData.notes || '',
-          submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
-          submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
-          mass_correct: massCorrect,
-          cog_correct: cogCorrect,
-          prompt_bonus: promptBonus,
-          points_awarded: pointsAwarded
-        }]);
-      } catch {}
-      try {
-        const lbRes = await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
-        if (lbRes && lbRes.totalPoints !== undefined) {
-          totalPoints = lbRes.totalPoints;
-        }
-      } catch {}
+      client.from('challenge_submissions').insert([{
+        member_name: entryData.member_name,
+        member_email: (entryData.member_email || '').toLowerCase().trim(),
+        model_title: entryData.model_title,
+        pdf_url: entryData.pdf_url,
+        notes: entryData.notes || '',
+        submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
+        submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
+        mass_correct: massCorrect,
+        cog_correct: cogCorrect,
+        prompt_bonus: promptBonus,
+        points_awarded: pointsAwarded
+      }]).catch(() => {});
+
+      upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded).catch(() => {});
     }
 
     return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints };
@@ -559,18 +575,29 @@ const EXECUTIVE_ADMIN_EMAILS = [
 ];
 
 async function isAdmin() {
+  if (cachedIsAdmin !== null) return cachedIsAdmin;
   const client = getClient();
   try {
     const user = await getCurrentUser();
-    if (!user) return false;
+    if (!user) {
+      cachedIsAdmin = false;
+      return false;
+    }
     const userEmail = (user.email || '').toLowerCase().trim();
-    if (EXECUTIVE_ADMIN_EMAILS.includes(userEmail)) return true;
+    if (EXECUTIVE_ADMIN_EMAILS.includes(userEmail)) {
+      cachedIsAdmin = true;
+      return true;
+    }
     if (client) {
       const { data } = await client.from('admin_users').select('id').eq('user_id', user.id).maybeSingle();
-      if (data) return true;
+      if (data) {
+        cachedIsAdmin = true;
+        return true;
+      }
     }
     const result = await sendToBackend('verify_admin');
-    return !!result;
+    cachedIsAdmin = !!result;
+    return cachedIsAdmin;
   } catch {
     return false;
   }
@@ -593,6 +620,7 @@ window.cmdSupabase = {
   submitSuggestion,
   voteOnSuggestion,
   uploadFile,
+  getPublicUrl,
   submitChallengeEntry,
   submitChallengeEntryWithScoring,
   upsertLeaderboardByEmail,

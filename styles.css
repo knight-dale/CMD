@@ -1119,8 +1119,8 @@ button {
   border: 1px solid var(--border-dark);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.25s ease;
+  transform: translateY(8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
   pointer-events: auto;
 }
 

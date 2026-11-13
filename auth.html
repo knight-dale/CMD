@@ -335,15 +335,21 @@
   <script>
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
+      if (!container) return;
+      if (type === 'success' || type === 'error') {
+        const infos = container.querySelectorAll('.toast-msg.info');
+        infos.forEach(i => i.remove());
+      }
       const t = document.createElement('div');
       t.className = `toast-msg ${type}`;
       t.textContent = message;
       container.appendChild(t);
-      requestAnimationFrame(() => t.classList.add('show'));
+      void t.offsetWidth;
+      t.classList.add('show');
       setTimeout(() => {
         t.classList.remove('show');
-        setTimeout(() => t.remove(), 260);
-      }, 3400);
+        setTimeout(() => t.remove(), 220);
+      }, 3000);
     }
 
     const btnSignin = document.getElementById('tab-btn-signin');
@@ -398,6 +404,11 @@
 
     formSignin.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submitBtn = formSignin.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing in...';
+      }
       const email = document.getElementById('signin-email').value.trim();
       const pass = document.getElementById('signin-password').value;
 
@@ -408,15 +419,19 @@
           showToast('Executive access confirmed. Redirecting to Admin Console...', 'success');
           setTimeout(() => {
             window.location.href = 'admin.html';
-          }, 600);
+          }, 400);
         } else {
           showToast('Authentication confirmed. Welcome back.', 'success');
           setTimeout(() => {
             window.location.href = 'index.html';
-          }, 600);
+          }, 400);
         }
       } catch (err) {
         showToast(err.message || 'Login unverified', 'error');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Sign In to Club &nearr;';
+        }
       }
     });
 
@@ -508,6 +523,7 @@
 
     formSignup.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submitBtn = document.getElementById('btn-signup-submit');
       const name = document.getElementById('signup-name').value;
       const email = document.getElementById('signup-email').value;
       const pass = document.getElementById('signup-pass').value;
@@ -518,14 +534,23 @@
         return;
       }
 
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Registering account...';
+      }
+
       try {
         await window.cmdSupabase.signUp(email, pass, name);
         showToast('Account registered successfully', 'success');
         setTimeout(() => {
           window.location.href = 'index.html';
-        }, 900);
+        }, 500);
       } catch (err) {
         showToast(err.message || 'Registration issue occurred', 'error');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Complete Registration &nearr;';
+        }
       }
     });
 
