@@ -53,6 +53,23 @@ async function signUp(email, password, displayName) {
   return data;
 }
 
+async function signInWithGoogle() {
+  const client = getClient();
+  if (!client) throw new Error('Supabase client unconfigured.');
+  const redirectTo = new URL('index.html', window.location.href).href;
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+  if (error) throw error;
+  return data;
+}
+
+function getDisplayName(user) {
+  const m = (user && user.user_metadata) || {};
+  return m.display_name || m.full_name || m.name || (user && user.email) || null;
+}
+
 async function signOut() {
   const client = getClient();
   if (!client) return;
@@ -83,7 +100,7 @@ async function sendToBackend(action, payload = {}) {
     action,
     userId: user ? user.id : null,
     userEmail: user ? user.email : null,
-    userName: user ? (user.user_metadata?.display_name || user.email) : null,
+    userName: getDisplayName(user),
     ...payload
   });
 
@@ -494,6 +511,8 @@ window.cmdSupabase = {
   getCurrentUser,
   signIn,
   signUp,
+  signInWithGoogle,
+  getDisplayName,
   signOut,
   resetPassword,
   updatePassword,

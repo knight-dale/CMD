@@ -95,7 +95,8 @@ async function initAuthState() {
   const user = await window.cmdSupabase.getCurrentUser();
 
   if (user) {
-    const rawName = user.user_metadata?.display_name || user.email.split('@')[0];
+    const meta = user.user_metadata || {};
+    const rawName = meta.display_name || meta.full_name || meta.name || user.email.split('@')[0];
     const initial = rawName.charAt(0).toUpperCase();
 
     if (unauthDiv) unauthDiv.style.display = 'none';
