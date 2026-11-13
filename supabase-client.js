@@ -218,22 +218,24 @@ async function submitChallengeEntry(entryData) {
 
 async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
   const client = getClient();
-  if (!client) return;
+  if (!client || !email) return;
+  const normalizedEmail = email.toLowerCase().trim();
+  const pts = Number.isFinite(pointsToAdd) ? pointsToAdd : 0;
   const { data: existing } = await client
     .from('leaderboard')
     .select('id, points, submission_count')
-    .eq('member_email', email)
+    .eq('member_email', normalizedEmail)
     .maybeSingle();
   if (existing) {
     await client.from('leaderboard').update({
-      points: (existing.points || 0) + pointsToAdd,
+      points: (existing.points || 0) + pts,
       submission_count: (existing.submission_count || 0) + 1
     }).eq('id', existing.id);
   } else {
     await client.from('leaderboard').insert([{
-      member_email: email,
-      display_name: name,
-      points: pointsToAdd,
+      member_email: normalizedEmail,
+      display_name: name || normalizedEmail.split('@')[0],
+      points: pts,
       submission_count: 1,
       badges: []
     }]);
@@ -241,53 +243,63 @@ async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
 }
 
 async function submitChallengeEntryWithScoring(entryData) {
+  let backendResult = null;
+  try {
+    backendResult = await sendToBackend('submit_challenge_entry', { entry: entryData });
+  } catch (err) {
+  }
+
+  let massCorrect = backendResult ? !!backendResult.massCorrect : false;
+  let cogCorrect = backendResult ? !!backendResult.cogCorrect : false;
+  let pointsAwarded = backendResult && backendResult.pointsAwarded !== undefined ? backendResult.pointsAwarded : 0;
+
+  if (!backendResult) {
+    const challenge = await fetchCurrentChallenge();
+    if (challenge) {
+      if (challenge.answer_mass != null && entryData.submitted_mass != null) {
+        const tol = challenge.answer_mass_tolerance != null ? parseFloat(challenge.answer_mass_tolerance) : 0.05;
+        const diff = Math.abs(entryData.submitted_mass - challenge.answer_mass);
+        massCorrect = diff <= tol;
+        if (massCorrect) pointsAwarded += 30;
+      }
+      if (challenge.answer_cog != null && entryData.submitted_cog != null) {
+        const tol = challenge.answer_cog_tolerance != null ? parseFloat(challenge.answer_cog_tolerance) : 2.0;
+        const diff = Math.abs(entryData.submitted_cog - challenge.answer_cog);
+        cogCorrect = diff <= tol;
+        if (cogCorrect) pointsAwarded += 15;
+      }
+    }
+  }
+
   const client = getClient();
-  const challenge = await fetchCurrentChallenge();
-
-  let massCorrect = false;
-  let cogCorrect = false;
-  let pointsAwarded = 0;
-
-  if (challenge) {
-    if (challenge.answer_mass != null && entryData.submitted_mass != null) {
-      const tol = (challenge.answer_mass_tolerance || 5) / 100;
-      const diff = Math.abs(entryData.submitted_mass - challenge.answer_mass);
-      massCorrect = diff <= challenge.answer_mass * tol;
-      if (massCorrect) pointsAwarded += 50;
-    }
-    if (challenge.answer_cog != null && entryData.submitted_cog != null) {
-      const tol = (challenge.answer_cog_tolerance || 10) / 100;
-      const diff = Math.abs(entryData.submitted_cog - challenge.answer_cog);
-      cogCorrect = diff <= challenge.answer_cog * tol;
-      if (cogCorrect) pointsAwarded += 30;
-    }
-  }
-
-  const submissionPayload = {
-    member_name: entryData.member_name,
-    member_email: entryData.member_email,
-    model_title: entryData.model_title,
-    pdf_url: entryData.pdf_url,
-    notes: entryData.notes || '',
-    challenge_id: challenge ? challenge.id : null,
-    submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
-    submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
-    mass_correct: massCorrect,
-    cog_correct: cogCorrect,
-    points_awarded: pointsAwarded
-  };
-
   if (client) {
-    const { error } = await client.from('challenge_submissions').insert([submissionPayload]);
-    if (error) throw error;
-    if (pointsAwarded > 0) {
-      await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+    const submissionPayload = {
+      member_name: entryData.member_name,
+      member_email: (entryData.member_email || '').toLowerCase().trim(),
+      model_title: entryData.model_title,
+      pdf_url: entryData.pdf_url,
+      notes: entryData.notes || '',
+      submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
+      submitted_cog: entryData.submitted_cog != null ? entryData.submitted_cog : null,
+      mass_correct: massCorrect,
+      cog_correct: cogCorrect,
+      points_awarded: pointsAwarded
+    };
+    try {
+      await client.from('challenge_submissions').insert([submissionPayload]);
+    } catch {
     }
-  } else {
-    await sendToBackend('submit_challenge_entry', { entry: submissionPayload });
+    try {
+      await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+    } catch {
+    }
   }
 
-  return { massCorrect, cogCorrect, pointsAwarded };
+  return {
+    massCorrect,
+    cogCorrect,
+    pointsAwarded
+  };
 }
 
 async function addProject(projectData) {

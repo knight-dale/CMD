@@ -453,39 +453,28 @@
     <div class="modal-dialog-card">
       <button type="button" class="modal-close-btn" id="modal-close-button" aria-label="Close modal">&times;</button>
       <span class="mono-tag orange">CAD SUBMISSION</span>
-      <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Model PDF</h3>
-      <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:20px;">
-        Upload engineering drawings, FEA stress plots, or slice parameters for weekly competition evaluation.
+      <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Model Evaluation</h3>
+      <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
+        Provide your measured mass, centre of gravity, and CAD drawing sheet PDF for competition scoring.
       </p>
+
+      <div style="background:#F0F2F5;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-size:0.82rem;color:var(--text-light-secondary);">
+        Submitting as: <strong id="modal-logged-user-name" style="color:var(--text-light-primary);">Authenticated Member</strong>
+        <span id="modal-logged-user-email" style="display:block;font-size:0.75rem;font-family:var(--font-mono);color:var(--text-light-secondary);margin-top:2px;"></span>
+      </div>
 
       <form id="cad-pdf-submission-form" style="display:flex;flex-direction:column;gap:14px;">
         <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Full Name</label>
-          <input type="text" id="entry-name" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" required placeholder="Student Name">
-        </div>
-        <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Student Email</label>
-          <input type="email" id="entry-email" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" required placeholder="designer@students.dkut.ac.ke">
-        </div>
-        <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Model Title</label>
-          <input type="text" id="entry-title" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" required placeholder="e.g. Vortex Impeller Rev 2">
-        </div>
-        <div>
           <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Component Mass (kg)</label>
-          <input type="number" id="entry-mass" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 3.72">
+          <input type="number" id="entry-mass" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 3.72" required>
         </div>
         <div>
           <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Gravity Distance from Origin (mm)</label>
-          <input type="number" id="entry-cog" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 48.6">
+          <input type="number" id="entry-cog" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 48.6" required>
         </div>
         <div>
           <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Model Documentation (PDF)</label>
           <input type="file" id="entry-pdf" accept="application/pdf" style="width:100%;padding:8px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-size:0.85rem;" required>
-        </div>
-        <div>
-          <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Engineering Notes</label>
-          <textarea id="entry-notes" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.85rem;min-height:70px;" placeholder="Summary of materials, boundary conditions, and print resolution"></textarea>
         </div>
         <button type="submit" class="btn-black" style="width:100%;margin-top:6px;">Upload Model for Evaluation &rarr;</button>
       </form>

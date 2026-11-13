@@ -408,7 +408,25 @@ function initUploadModal() {
 
   openBtns.forEach(btn => {
     if (btn) {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
+        if (!window.cmdSupabase) {
+          showToast('Connection unconfigured', 'error');
+          return;
+        }
+        const user = await window.cmdSupabase.getCurrentUser();
+        if (!user) {
+          showToast('Please sign in to submit CAD models', 'error');
+          setTimeout(() => {
+            window.location.href = 'auth.html';
+          }, 800);
+          return;
+        }
+
+        const nameEl = document.getElementById('modal-logged-user-name');
+        const emailEl = document.getElementById('modal-logged-user-email');
+        if (nameEl) nameEl.textContent = user.user_metadata?.display_name || user.email.split('@')[0];
+        if (emailEl) emailEl.textContent = user.email;
+
         modal.style.display = 'flex';
       });
     }
@@ -429,10 +447,21 @@ function initUploadModal() {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = document.getElementById('entry-name').value;
-      const email = document.getElementById('entry-email').value;
-      const title = document.getElementById('entry-title').value;
-      const notes = document.getElementById('entry-notes').value;
+      if (!window.cmdSupabase) return;
+
+      const user = await window.cmdSupabase.getCurrentUser();
+      if (!user) {
+        showToast('Please sign in to submit CAD models', 'error');
+        setTimeout(() => {
+          window.location.href = 'auth.html';
+        }, 800);
+        return;
+      }
+
+      const name = user.user_metadata?.display_name || user.email.split('@')[0];
+      const email = user.email;
+      const title = 'CAD Competition Submission';
+      const notes = '';
       const fileInput = document.getElementById('entry-pdf');
       const massInput = document.getElementById('entry-mass');
       const cogInput = document.getElementById('entry-cog');
@@ -454,37 +483,36 @@ function initUploadModal() {
 
       try {
         let pdfUrl = '#';
-        if (window.cmdSupabase) {
-          const path = `submissions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-          try {
-            pdfUrl = await window.cmdSupabase.uploadFile('submissions', path, file);
-          } catch {
-            pdfUrl = 'uploaded_locally';
-          }
+        const path = `submissions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        try {
+          pdfUrl = await window.cmdSupabase.uploadFile('submissions', path, file);
+        } catch {
+          pdfUrl = 'uploaded_locally';
+        }
 
-          const result = await window.cmdSupabase.submitChallengeEntryWithScoring({
-            member_name: name,
-            member_email: email,
-            model_title: title,
-            pdf_url: pdfUrl,
-            notes,
-            submitted_mass: submittedMass,
-            submitted_cog: submittedCog
-          });
+        const result = await window.cmdSupabase.submitChallengeEntryWithScoring({
+          member_name: name,
+          member_email: email,
+          model_title: title,
+          pdf_url: pdfUrl,
+          notes,
+          submitted_mass: submittedMass,
+          submitted_cog: submittedCog
+        });
 
-          if (result && (result.massCorrect || result.cogCorrect || result.pointsAwarded === 0)) {
-            const massMsg = submittedMass != null ? (result.massCorrect ? 'Mass correct. +50 pts.' : 'Mass off. +0 pts.') : '';
-            const cogMsg = submittedCog != null ? (result.cogCorrect ? 'CoG correct. +30 pts.' : 'CoG off. +0 pts.') : '';
-            const parts = [massMsg, cogMsg].filter(Boolean);
-            const totalMsg = result.pointsAwarded > 0 ? `Total ${result.pointsAwarded} pts awarded.` : 'No points awarded this submission.';
-            showToast([...parts, totalMsg].join(' '), result.pointsAwarded > 0 ? 'success' : 'info');
-          } else {
-            showToast('CAD model PDF submitted successfully', 'success');
-          }
+        if (result) {
+          const massMsg = submittedMass != null ? (result.massCorrect ? 'Mass correct. +30 pts.' : 'Mass off. +0 pts.') : '';
+          const cogMsg = submittedCog != null ? (result.cogCorrect ? 'CoG correct. +15 pts.' : 'CoG off. +0 pts.') : '';
+          const parts = [massMsg, cogMsg].filter(Boolean);
+          const totalMsg = result.pointsAwarded > 0 ? `Total ${result.pointsAwarded} pts awarded. Upload count recorded.` : 'Upload count recorded.';
+          showToast([...parts, totalMsg].join(' '), result.pointsAwarded > 0 ? 'success' : 'info');
+        } else {
+          showToast('CAD model PDF submitted successfully. Upload count recorded.', 'success');
         }
 
         form.reset();
         modal.style.display = 'none';
+        loadLeaderboardTable();
       } catch (err) {
         showToast(err.message || 'Submission encountered an error', 'error');
       }

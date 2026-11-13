@@ -251,9 +251,9 @@ function initChallengePublishForm() {
         brief_pdf_url: pdfUrl,
         is_active: isActive,
         answer_mass: answerMassInput !== '' ? parseFloat(answerMassInput) : null,
-        answer_mass_tolerance: massTolInput !== '' ? parseFloat(massTolInput) : 5,
+        answer_mass_tolerance: massTolInput !== '' ? parseFloat(massTolInput) : 0.05,
         answer_cog: answerCogInput !== '' ? parseFloat(answerCogInput) : null,
-        answer_cog_tolerance: cogTolInput !== '' ? parseFloat(cogTolInput) : 10
+        answer_cog_tolerance: cogTolInput !== '' ? parseFloat(cogTolInput) : 2.0
       });
 
       showToast(`Week ${week} competition published`, 'success');
@@ -300,7 +300,7 @@ async function renderSubmissionsList() {
       <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? cogOk : 'N/A'}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
       <td>
-        ${isCleanUrl ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF &nearr;</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}
+        ${isCleanUrl ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}
       </td>
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${s.notes || 'None'}</td>
     `;
@@ -351,7 +351,7 @@ async function renderLeaderboardAdmin() {
       const cancelBtn = document.getElementById('lb-cancel-button');
       const submitBtn = document.getElementById('lb-submit-button');
       if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-      if (submitBtn) submitBtn.textContent = 'Update Member Record &nearr;';
+      if (submitBtn) submitBtn.textContent = 'Update Member Record';
     });
 
     const delBtn = tr.querySelector('.btn-del-entry');
@@ -382,7 +382,7 @@ function initLeaderboardEditorForm() {
       form.reset();
       document.getElementById('lb-id').value = '';
       cancelBtn.style.display = 'none';
-      if (submitBtn) submitBtn.textContent = 'Save Member Standings &nearr;';
+      if (submitBtn) submitBtn.textContent = 'Save Member Standings';
     });
   }
 
@@ -418,7 +418,7 @@ function initLeaderboardEditorForm() {
       form.reset();
       document.getElementById('lb-id').value = '';
       if (cancelBtn) cancelBtn.style.display = 'none';
-      if (submitBtn) submitBtn.textContent = 'Save Member Standings &nearr;';
+      if (submitBtn) submitBtn.textContent = 'Save Member Standings';
       renderLeaderboardAdmin();
     } catch (err) {
       showToast(err.message || 'Error updating leaderboard', 'error');
