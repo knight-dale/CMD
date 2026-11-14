@@ -233,7 +233,9 @@ function initChallengePublishForm() {
     const isActive = document.getElementById('c-active').checked;
     const answerMassInput = document.getElementById('c-answer-mass').value;
     const massTolInput = document.getElementById('c-mass-tol').value;
-    const answerCogInput = document.getElementById('c-answer-cog').value;
+    const cogX = document.getElementById('c-answer-cog-x').value;
+    const cogY = document.getElementById('c-answer-cog-y').value;
+    const cogZ = document.getElementById('c-answer-cog-z').value;
     const cogTolInput = document.getElementById('c-cog-tol').value;
 
     let pdfUrl = document.getElementById('c-pdf-url').value.trim();
@@ -257,7 +259,9 @@ function initChallengePublishForm() {
         is_active: isActive,
         answer_mass: answerMassInput !== '' ? parseFloat(answerMassInput) : null,
         answer_mass_tolerance: massTolInput !== '' ? parseFloat(massTolInput) : 0.05,
-        answer_cog: answerCogInput !== '' ? parseFloat(answerCogInput) : null,
+        answer_cog_x: cogX !== '' ? parseFloat(cogX) : null,
+        answer_cog_y: cogY !== '' ? parseFloat(cogY) : null,
+        answer_cog_z: cogZ !== '' ? parseFloat(cogZ) : null,
         answer_cog_tolerance: cogTolInput !== '' ? parseFloat(cogTolInput) : 2.0
       });
 
@@ -291,6 +295,11 @@ async function renderSubmissionsList() {
     const isCleanUrl = s.pdf_url && typeof s.pdf_url === 'string' && s.pdf_url !== '#' && !s.pdf_url.startsWith('file:') && !s.pdf_url.startsWith('C:') && !s.pdf_url.startsWith('D:');
     const massOk = s.mass_correct ? 'YES' : 'NO';
     const cogOk = s.cog_correct ? 'YES' : 'NO';
+    const hasNewCog = s.submitted_cog_x != null && s.submitted_cog_y != null && s.submitted_cog_z != null;
+    const hasAnyCog = hasNewCog || s.submitted_cog != null;
+    const cogText = hasNewCog
+      ? `X ${s.submitted_cog_x}, Y ${s.submitted_cog_y}, Z ${s.submitted_cog_z} mm`
+      : (s.submitted_cog != null ? s.submitted_cog + ' mm' : 'N/A');
     const promptBonusText = s.prompt_bonus ? '+10 PTS' : 'NO';
     const massStyle = s.mass_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
     const cogStyle = s.cog_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
@@ -303,8 +312,8 @@ async function renderSubmissionsList() {
       <td>${s.model_title}</td>
       <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? s.submitted_mass + ' kg' : 'N/A'}</td>
       <td style="${massStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? massOk : 'N/A'}</td>
-      <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? s.submitted_cog + ' mm' : 'N/A'}</td>
-      <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_cog != null ? cogOk : 'N/A'}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;">${cogText}</td>
+      <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${hasAnyCog ? cogOk : 'N/A'}</td>
       <td style="${promptStyle}font-family:var(--font-mono);font-size:0.85rem;">${promptBonusText}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
       <td>

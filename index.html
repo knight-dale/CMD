@@ -470,8 +470,12 @@
             <input type="number" id="entry-mass" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 3.72" required>
           </div>
           <div>
-            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Gravity Distance from Origin (mm)</label>
-            <input type="number" id="entry-cog" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 48.6" required>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Gravity from Origin (mm)</label>
+            <div class="cog-grid">
+              <input type="number" id="entry-cog-x" step="0.001" placeholder="X" required>
+              <input type="number" id="entry-cog-y" step="0.001" placeholder="Y" required>
+              <input type="number" id="entry-cog-z" step="0.001" placeholder="Z" required>
+            </div>
           </div>
           <div>
             <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Model Documentation (PDF)</label>

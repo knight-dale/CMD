@@ -485,7 +485,7 @@ function initUploadModal() {
       }
     }
 
-    if (cogVal) cogVal.textContent = cog != null ? `${cog} mm` : 'N/A';
+    if (cogVal) cogVal.textContent = (cog && cog.x != null) ? `X ${cog.x}, Y ${cog.y}, Z ${cog.z} mm` : 'N/A';
     if (cogBadge) {
       if (result.cogTier === 'EXACT' || result.cogPoints === 15) {
         cogBadge.textContent = 'EXACT (+15 PTS)';
@@ -591,9 +591,12 @@ function initUploadModal() {
 
       const fileInput = document.getElementById('entry-pdf');
       const massInput = document.getElementById('entry-mass');
-      const cogInput = document.getElementById('entry-cog');
+      const readNum = id => { const el = document.getElementById(id); return el && el.value !== '' ? parseFloat(el.value) : null; };
+      const submittedCogX = readNum('entry-cog-x');
+      const submittedCogY = readNum('entry-cog-y');
+      const submittedCogZ = readNum('entry-cog-z');
       const submittedMass = massInput && massInput.value !== '' ? parseFloat(massInput.value) : null;
-      const submittedCog = cogInput && cogInput.value !== '' ? parseFloat(cogInput.value) : null;
+
 
       if (!fileInput.files || fileInput.files.length === 0) {
         showToast('Please select a PDF document', 'error');
@@ -641,14 +644,16 @@ function initUploadModal() {
           pdf_url: pdfUrl,
           notes: '',
           submitted_mass: submittedMass,
-          submitted_cog: submittedCog
+          submitted_cog_x: submittedCogX,
+          submitted_cog_y: submittedCogY,
+          submitted_cog_z: submittedCogZ
         });
 
         const [uploadedUrl, result] = await Promise.all([uploadTask, scoringTask]);
 
         latestResult = result;
         lastMass = submittedMass;
-        lastCog = submittedCog;
+        lastCog = { x: submittedCogX, y: submittedCogY, z: submittedCogZ };
 
         loadLeaderboardTable();
 
