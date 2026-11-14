@@ -495,7 +495,7 @@ async function submitChallengeEntryWithScoring(entryData) {
         mass_correct: massCorrect,
         cog_correct: cogCorrect,
         prompt_bonus: promptBonus,
-        points_awarded: pointsAwarded
+                points_awarded: pointsAwarded
       }]);
       if (insertError) console.error('challenge_submissions insert failed:', insertError);
 
@@ -504,7 +504,6 @@ async function submitChallengeEntryWithScoring(entryData) {
       } catch (e) {
         console.error('leaderboard upsert failed:', e);
       }
-    }
 
     return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints };
   }
