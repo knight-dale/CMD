@@ -496,7 +496,9 @@ async function submitChallengeEntryWithScoring(entryData) {
         cog_correct: cogCorrect,
         prompt_bonus: promptBonus,
         points_awarded: pointsAwarded
-      }]).catch(() => {});
+      }]).then(({error}) => {
+        if (error) console.error('Submission save failed:', error.message);
+      });
 
       upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded).catch(() => {});
     }
