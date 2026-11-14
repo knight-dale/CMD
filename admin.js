@@ -27,6 +27,7 @@ function initAdminNavigation() {
     'pane-projects': 'Projects Vault',
     'pane-challenges': 'Weekly Competitions',
     'pane-submissions': 'Member Submissions',
+    'pane-members': 'Registered Club Members',
     'pane-leaderboard': 'Edit Leaderboard',
     'pane-suggestions': 'Community Polls',
     'pane-media': 'Site Media Manager'
@@ -36,6 +37,7 @@ function initAdminNavigation() {
     'pane-projects': 'SYSTEM ARCHIVE',
     'pane-challenges': 'COMPETITION PIPELINE',
     'pane-submissions': 'STUDENT WORK',
+    'pane-members': 'MEMBER DIRECTORY',
     'pane-leaderboard': 'STANDINGS MANAGEMENT',
     'pane-suggestions': 'COMMUNITY VOTES',
     'pane-media': 'ASSET REPLACEMENT'
@@ -54,6 +56,7 @@ function initAdminNavigation() {
 
       if (heading) heading.textContent = titles[targetPaneId] || 'Console';
       if (catTag) catTag.textContent = categories[targetPaneId] || 'MANAGEMENT';
+      if (targetPaneId === 'pane-members') renderMembersList();
     });
   });
 }
@@ -322,6 +325,95 @@ async function renderSubmissionsList() {
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${s.notes || 'None'}</td>
     `;
     tbody.appendChild(tr);
+  });
+}
+
+let allMembersCache = [];
+
+async function renderMembersList() {
+  const tbody = document.getElementById('members-table-body');
+  const countEl = document.getElementById('admin-member-count');
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">Loading members directory...</td></tr>`;
+
+  let members = [];
+  if (window.cmdSupabase && window.cmdSupabase.fetchMembers) {
+    try {
+      members = await window.cmdSupabase.fetchMembers();
+    } catch {}
+  }
+
+  allMembersCache = members || [];
+  if (countEl) {
+    countEl.textContent = allMembersCache.length;
+  }
+
+  renderFilteredMembers(allMembersCache);
+}
+
+function renderFilteredMembers(list) {
+  const tbody = document.getElementById('members-table-body');
+  if (!tbody) return;
+
+  if (!list || list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No registered members found.</td></tr>`;
+    return;
+  }
+
+  const executiveEmails = [
+    'jonathan.edwards22@students.dkut.ac.ke',
+    'ouma.solomon22@students.dkut.ac.ke'
+  ];
+
+  tbody.innerHTML = '';
+  list.forEach((m, idx) => {
+    const tr = document.createElement('tr');
+    const isExec = executiveEmails.includes((m.email || '').toLowerCase().trim());
+
+    let dayJoined = 'N/A';
+    if (m.created_at) {
+      try {
+        const d = new Date(m.created_at);
+        dayJoined = isNaN(d.getTime()) ? String(m.created_at).slice(0, 10) : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch {
+        dayJoined = String(m.created_at).slice(0, 10);
+      }
+    }
+
+    const roleBadge = isExec
+      ? `<span class="status-pill active" style="background:#FFE7E0;color:#FF4A22;">EXECUTIVE</span>`
+      : `<span class="status-pill" style="background:#22262B;color:var(--text-dark-primary);">STUDENT</span>`;
+
+    tr.innerHTML = `
+      <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-dark-secondary);">${idx + 1}</td>
+      <td style="font-weight:700;">${m.display_name || (m.email ? m.email.split('@')[0] : 'Member')}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;color:var(--text-dark-secondary);">${m.email || 'N/A'}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;">${dayJoined}</td>
+      <td>${roleBadge}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;color:var(--neon-green);font-weight:700;">${m.points || 0} PTS</td>
+      <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;color:var(--text-dark-secondary);">${m.submission_count || 0}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function initMembersSearch() {
+  const searchInput = document.getElementById('member-search-input');
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    if (!q) {
+      renderFilteredMembers(allMembersCache);
+      return;
+    }
+    const filtered = allMembersCache.filter(m => {
+      const name = (m.display_name || '').toLowerCase();
+      const email = (m.email || '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+    renderFilteredMembers(filtered);
   });
 }
 
@@ -646,6 +738,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initChallengePublishForm();
   renderChallengesList();
   renderSubmissionsList();
+  renderMembersList();
+  initMembersSearch();
   initLeaderboardEditorForm();
   renderLeaderboardAdmin();
   renderSuggestionsAdmin();
@@ -656,6 +750,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     reloadSubBtn.addEventListener('click', () => {
       renderSubmissionsList();
       showToast('Submissions refreshed', 'info');
+    });
+  }
+
+  const reloadMembersBtn = document.getElementById('reload-members-button');
+  if (reloadMembersBtn) {
+    reloadMembersBtn.addEventListener('click', async () => {
+      await renderMembersList();
+      showToast('Members directory refreshed', 'info');
     });
   }
 });

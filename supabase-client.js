@@ -245,6 +245,109 @@ async function fetchSubmissions(challengeId) {
   }
 }
 
+async function fetchMembers() {
+  const client = getClient();
+  let members = [];
+
+  if (client) {
+    try {
+      const { data, error } = await client.rpc('get_admin_members');
+      if (!error && Array.isArray(data) && data.length > 0) {
+        members = data;
+      }
+    } catch {}
+
+    if (members.length === 0) {
+      try {
+        const { data, error } = await client.from('members').select('*');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          members = data;
+        }
+      } catch {}
+    }
+
+    if (members.length === 0) {
+      try {
+        const [lbRes, subRes] = await Promise.allSettled([
+          client.from('leaderboard').select('*'),
+          client.from('challenge_submissions').select('member_name, member_email, created_at')
+        ]);
+
+        const map = {};
+        if (lbRes.status === 'fulfilled' && lbRes.value.data) {
+          lbRes.value.data.forEach(lb => {
+            const email = (lb.member_email || '').toLowerCase().trim();
+            if (email) {
+              map[email] = {
+                id: lb.id,
+                email: email,
+                display_name: lb.display_name || email.split('@')[0],
+                points: lb.points || 0,
+                submission_count: lb.submission_count || 0,
+                created_at: lb.updated_at || new Date().toISOString()
+              };
+            }
+          });
+        }
+
+        if (subRes.status === 'fulfilled' && subRes.value.data) {
+          subRes.value.data.forEach(s => {
+            const email = (s.member_email || '').toLowerCase().trim();
+            if (!email) return;
+            if (!map[email]) {
+              map[email] = {
+                id: 'sub_m_' + Math.random().toString(36).slice(2, 9),
+                email: email,
+                display_name: s.member_name || email.split('@')[0],
+                points: 0,
+                submission_count: 1,
+                created_at: s.created_at || new Date().toISOString()
+              };
+            } else {
+              if (s.created_at && new Date(s.created_at) < new Date(map[email].created_at)) {
+                map[email].created_at = s.created_at;
+              }
+            }
+          });
+        }
+
+        members = Object.values(map);
+      } catch {}
+    }
+  }
+
+  if (members.length === 0) {
+    try {
+      const gsMembers = await sendToBackend('get_members');
+      if (Array.isArray(gsMembers) && gsMembers.length > 0) {
+        members = gsMembers;
+      }
+    } catch {}
+  }
+
+  if (client && members.length > 0) {
+    try {
+      const { data: lbData } = await client.from('leaderboard').select('member_email, points, submission_count');
+      if (lbData) {
+        const lbMap = {};
+        lbData.forEach(l => {
+          if (l.member_email) lbMap[l.member_email.toLowerCase().trim()] = l;
+        });
+        members.forEach(m => {
+          const l = lbMap[(m.email || '').toLowerCase().trim()];
+          if (l) {
+            m.points = l.points !== undefined ? l.points : m.points;
+            m.submission_count = l.submission_count !== undefined ? l.submission_count : m.submission_count;
+          }
+        });
+      }
+    } catch {}
+  }
+
+  members.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  return members;
+}
+
 async function fetchAllChallenges() {
   const client = getClient();
   if (!client) return [];
@@ -627,6 +730,7 @@ window.cmdSupabase = {
   submitChallengeEntryWithScoring,
   upsertLeaderboardByEmail,
   fetchSubmissions,
+  fetchMembers,
   fetchAllChallenges,
   addProject,
   updateProject,
