@@ -166,18 +166,17 @@ async function fetchCurrentChallenge() {
 
 async function fetchLeaderboard() {
   const client = getClient();
-  if (!client) return [];
-  try {
-    const { data, error } = await client
-      .from('leaderboard')
-      .select('*')
-      .order('points', { ascending: false })
-      .limit(50);
-    if (error) throw error;
-    return data || [];
-  } catch {
-    return [];
+  if (!client) return null;
+  const { data, error } = await client
+    .from('leaderboard')
+    .select('id, display_name, points, badges, submission_count')
+    .order('points', { ascending: false })
+    .limit(50);
+  if (error) {
+    console.error('Leaderboard fetch failed:', error);
+    return null;
   }
+  return data || [];
 }
 
 async function fetchSuggestions() {
@@ -428,95 +427,33 @@ async function submitChallengeEntry(entryData) {
   return await sendToBackend('submit_challenge_entry', { entry: entryData });
 }
 
-async function upsertLeaderboardByEmail(email, name, pointsToAdd) {
-  const client = getClient();
-  if (!client || !email) return { totalPoints: pointsToAdd || 0 };
-  const normalizedEmail = email.toLowerCase().trim();
-  const pts = Number.isFinite(pointsToAdd) ? pointsToAdd : 0;
-  let finalPoints = pts;
-  const { data: existing } = await client
-    .from('leaderboard')
-    .select('id, points, submission_count')
-    .eq('member_email', normalizedEmail)
-    .maybeSingle();
-  if (existing) {
-    finalPoints = (existing.points || 0) + pts;
-    await client.from('leaderboard').update({
-      points: finalPoints,
-      submission_count: (existing.submission_count || 0) + 1
-    }).eq('id', existing.id);
-  } else {
-    await client.from('leaderboard').insert([{
-      member_email: normalizedEmail,
-      display_name: name || normalizedEmail.split('@')[0],
-      points: pts,
-      submission_count: 1,
-      badges: []
-    }]);
-  }
-  return { totalPoints: finalPoints };
-}
-
 async function submitChallengeEntryWithScoring(entryData) {
-  let backendResult = null;
-  let backendError = null;
+  const backendResult = await sendToBackend('submit_challenge_entry', { entry: entryData });
 
-  try {
-    backendResult = await sendToBackend('submit_challenge_entry', { entry: entryData });
-  } catch (err) {
-    backendError = err;
+  if (!backendResult) {
+    throw new Error('Submission could not be processed. Please try again.');
   }
 
-  if (backendResult) {
-    const massTier = backendResult.massTier || 'OFF';
-    const cogTier = backendResult.cogTier || 'OFF';
-    const massPoints = massTier === 'EXACT' ? 30 : (massTier === 'TOLERANCE' ? 15 : 0);
-    const cogPoints = cogTier === 'EXACT' ? 15 : (cogTier === 'TOLERANCE' ? 7 : 0);
-    const promptBonus = !!backendResult.promptBonus;
-    const pointsAwarded = backendResult.pointsAwarded !== undefined
-      ? backendResult.pointsAwarded
-      : (massPoints + cogPoints + (promptBonus ? 10 : 0));
-    const massCorrect = massTier !== 'OFF';
-    const cogCorrect = cogTier !== 'OFF';
-    const client = getClient();
-    let totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
+  const massTier = backendResult.massTier || 'OFF';
+  const cogTier = backendResult.cogTier || 'OFF';
+  const massPoints = backendResult.massPoints !== undefined
+    ? backendResult.massPoints
+    : (massTier === 'EXACT' ? 30 : (massTier === 'TOLERANCE' ? 15 : 0));
+  const cogPoints = backendResult.cogPoints !== undefined
+    ? backendResult.cogPoints
+    : (cogTier === 'EXACT' ? 15 : (cogTier === 'TOLERANCE' ? 7 : 0));
+  const promptBonus = !!backendResult.promptBonus;
+  const pointsAwarded = backendResult.pointsAwarded !== undefined
+    ? backendResult.pointsAwarded
+    : (massPoints + cogPoints + (promptBonus ? 10 : 0));
+  const totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
 
-    let syncDone = Promise.resolve();
-
-    if (client) {
-      const insertTask = client.from('challenge_submissions').insert([{
-        member_name: entryData.member_name,
-        member_email: (entryData.member_email || '').toLowerCase().trim(),
-        model_title: entryData.model_title,
-        pdf_url: entryData.pdf_url,
-        notes: entryData.notes || '',
-        submitted_mass: entryData.submitted_mass != null ? entryData.submitted_mass : null,
-        submitted_cog_x: entryData.submitted_cog_x ?? null,
-        submitted_cog_y: entryData.submitted_cog_y ?? null,
-        submitted_cog_z: entryData.submitted_cog_z ?? null,
-        mass_correct: massCorrect,
-        cog_correct: cogCorrect,
-        prompt_bonus: promptBonus,
-        points_awarded: pointsAwarded
-      }]).then(({ error }) => {
-        if (error) console.error('challenge_submissions insert failed:', error);
-      });
-
-      const leaderboardTask = upsertLeaderboardByEmail(
-        entryData.member_email, entryData.member_name, pointsAwarded
-      ).catch(e => console.error('leaderboard upsert failed:', e));
-
-      syncDone = Promise.allSettled([insertTask, leaderboardTask]);
-    }
-
-    return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints, syncDone };
-  }
-
-  if (backendError) {
-    throw backendError;
-  }
-
-  throw new Error('Submission could not be processed. Please try again.');
+  return {
+    massCorrect: massTier !== 'OFF',
+    cogCorrect: cogTier !== 'OFF',
+    massTier, cogTier, massPoints, cogPoints,
+    promptBonus, pointsAwarded, totalPoints
+  };
 }
 async function addProject(projectData) {
   const client = getClient();
@@ -736,7 +673,6 @@ window.cmdSupabase = {
   getPublicUrl,
   submitChallengeEntry,
   submitChallengeEntryWithScoring,
-  upsertLeaderboardByEmail,
   fetchSubmissions,
   fetchMembers,
   fetchAllChallenges,

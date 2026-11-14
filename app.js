@@ -31,15 +31,6 @@ const fallbackProjects = [
   }
 ];
 
-const fallbackLeaderboard = [
-  { rank: 1, display_name: 'Kelvin Mwangi', points: 1840, badges: ['GOLD', 'FEA SPECIALIST', 'TOP VOTER'], submission_count: 14 },
-  { rank: 2, display_name: 'Faith Wanjiku', points: 1620, badges: ['SILVER', 'TOLERANCE MASTER'], submission_count: 11 },
-  { rank: 3, display_name: 'Brian Kiprop', points: 1490, badges: ['BRONZE', 'FABRICATION LEAD'], submission_count: 9 },
-  { rank: 4, display_name: 'Mercy Achieng', points: 1310, badges: ['SOLIDWORKS PRO'], submission_count: 8 },
-  { rank: 5, display_name: 'Dennis Kimani', points: 1180, badges: ['SURFACE MODELER'], submission_count: 7 },
-  { rank: 6, display_name: 'Grace Muthoni', points: 940, badges: ['CFD ENTHUSIAST'], submission_count: 5 }
-];
-
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -196,37 +187,35 @@ async function loadActiveChallenge() {
   }
 }
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 async function loadLeaderboardTable() {
   const tbody = document.getElementById('leaderboard-table-rows');
   if (!tbody) return;
 
-  let list = [];
-  if (window.cmdSupabase) {
-    list = await window.cmdSupabase.fetchLeaderboard();
-  }
+  const list = window.cmdSupabase ? await window.cmdSupabase.fetchLeaderboard() : null;
+  const msgRow = text =>
+    `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text-light-secondary);">${text}</td></tr>`;
 
-  if (!list || list.length === 0) {
-    list = fallbackLeaderboard;
-  }
+  if (list === null) { tbody.innerHTML = msgRow('Could not load standings. Please refresh.'); return; }
+  if (list.length === 0) { tbody.innerHTML = msgRow('No scores yet. Submit a model to take the first spot.'); return; }
 
   list.sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
 
   tbody.innerHTML = '';
   list.forEach((item, index) => {
     const rankNum = index + 1;
+    const rankClass = rankNum === 1 ? 'gold' : rankNum === 2 ? 'silver' : rankNum === 3 ? 'bronze' : '';
+    const badgesHtml = (item.badges || []).map(b => `<span class="badge-tag">${escapeHtml(b)}</span>`).join(' ');
+
     const tr = document.createElement('tr');
-
-    let rankClass = '';
-    if (rankNum === 1) rankClass = 'gold';
-    else if (rankNum === 2) rankClass = 'silver';
-    else if (rankNum === 3) rankClass = 'bronze';
-
-    const badgesHtml = (item.badges || []).map(b => `<span class="badge-tag">${b}</span>`).join(' ');
-
     tr.innerHTML = `
       <td><span class="rank-text-pill ${rankClass}">${rankNum}</span></td>
-      <td style="font-weight:700;">${item.display_name}</td>
-      <td style="font-family:var(--font-mono);font-weight:700;">${item.points} PTS</td>
+      <td style="font-weight:700;">${escapeHtml(item.display_name)}</td>
+      <td style="font-family:var(--font-mono);font-weight:700;">${Number(item.points) || 0} PTS</td>
       <td>${badgesHtml || '<span style="color:var(--text-light-secondary);font-size:0.75rem;">MEMBER</span>'}</td>
       <td style="text-align:right;font-family:var(--font-mono);color:var(--text-light-secondary);">${item.submission_count || 0}</td>
     `;
