@@ -482,7 +482,7 @@ async function submitChallengeEntryWithScoring(entryData) {
     let totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
 
     if (client) {
-      client.from('challenge_submissions').insert([{
+      const { error: insertError } = await client.from('challenge_submissions').insert([{
         member_name: entryData.member_name,
         member_email: (entryData.member_email || '').toLowerCase().trim(),
         model_title: entryData.model_title,
@@ -496,9 +496,14 @@ async function submitChallengeEntryWithScoring(entryData) {
         cog_correct: cogCorrect,
         prompt_bonus: promptBonus,
         points_awarded: pointsAwarded
-      }]).catch(() => {});
+      }]);
+      if (insertError) console.error('challenge_submissions insert failed:', insertError);
 
-      upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded).catch(() => {});
+      try {
+        await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
+      } catch (e) {
+        console.error('leaderboard upsert failed:', e);
+      }
     }
 
     return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints };
