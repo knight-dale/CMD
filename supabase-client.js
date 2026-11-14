@@ -481,8 +481,10 @@ async function submitChallengeEntryWithScoring(entryData) {
     const client = getClient();
     let totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
 
+    let syncDone = Promise.resolve();
+
     if (client) {
-      const { error: insertError } = await client.from('challenge_submissions').insert([{
+      const insertTask = client.from('challenge_submissions').insert([{
         member_name: entryData.member_name,
         member_email: (entryData.member_email || '').toLowerCase().trim(),
         model_title: entryData.model_title,
@@ -495,17 +497,19 @@ async function submitChallengeEntryWithScoring(entryData) {
         mass_correct: massCorrect,
         cog_correct: cogCorrect,
         prompt_bonus: promptBonus,
-                points_awarded: pointsAwarded
-      }]);
-      if (insertError) console.error('challenge_submissions insert failed:', insertError);
+        points_awarded: pointsAwarded
+      }]).then(({ error }) => {
+        if (error) console.error('challenge_submissions insert failed:', error);
+      });
 
-      try {
-        await upsertLeaderboardByEmail(entryData.member_email, entryData.member_name, pointsAwarded);
-      } catch (e) {
-        console.error('leaderboard upsert failed:', e);
-      }
+      const leaderboardTask = upsertLeaderboardByEmail(
+        entryData.member_email, entryData.member_name, pointsAwarded
+      ).catch(e => console.error('leaderboard upsert failed:', e));
 
-    return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints };
+      syncDone = Promise.allSettled([insertTask, leaderboardTask]);
+    }
+
+    return { massCorrect, cogCorrect, massTier, cogTier, massPoints, cogPoints, promptBonus, pointsAwarded, totalPoints, syncDone };
   }
 
   if (backendError) {

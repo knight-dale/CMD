@@ -454,10 +454,41 @@ function initUploadModal() {
     lastCog = null;
   }
 
+    let submissionToken = 0;
+
+  function setResultsHeader(tagText, bg, color, message) {
+    const tag = resultsView.querySelector('.mono-tag');
+    const msg = resultsView.querySelector('p');
+    if (tag) { tag.textContent = tagText; tag.style.background = bg; tag.style.color = color; }
+    if (msg) msg.textContent = message;
+  }
+
+  function showPending(mass, cog) {
+    if (!resultsView) return;
+    if (formView) formView.style.display = 'none';
+    resultsView.style.display = 'block';
+    setResultsHeader('SUBMISSION RECEIVED', '#E8F0FE', '#1A73E8',
+      'Your entry is in. Verifying in the background; your score will appear here in a few seconds.');
+
+    const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    const setBadge = id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = 'VERIFYING...'; el.style.background = '#F0F2F5'; el.style.color = 'var(--text-light-secondary)'; }
+    };
+    setText('res-mass-val', mass != null ? `${mass} g` : 'N/A');
+    setText('res-cog-val', cog && cog.x != null ? `X ${cog.x}, Y ${cog.y}, Z ${cog.z} mm` : 'N/A');
+    setText('res-prompt-val', 'Checking...');
+    setBadge('res-mass-badge'); setBadge('res-cog-badge'); setBadge('res-prompt-badge');
+    setText('res-round-points', '...');
+    setText('res-total-points', '...');
+  }
+
   function displayResults(result, mass, cog) {
     if (!resultsView) return;
     if (formView) formView.style.display = 'none';
     resultsView.style.display = 'block';
+    setResultsHeader('EVALUATION COMPLETE', '#E6F9EE', '#0B8A3E',
+      'Your parameters have been scored and your total points updated on the leaderboard.');
 
     const massVal = document.getElementById('res-mass-val');
     const massBadge = document.getElementById('res-mass-badge');
@@ -576,27 +607,15 @@ function initUploadModal() {
     });
   }
 
-  if (form) {
+    if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!window.cmdSupabase) return;
 
-      if (submitBtn && submitBtn.getAttribute('data-state') === 'ready_results' && latestResult) {
-        displayResults(latestResult, lastMass, lastCog);
-        submitBtn.removeAttribute('data-state');
-        return;
-      }
-
-      if (submitBtn && submitBtn.disabled) return;
-
       const fileInput = document.getElementById('entry-pdf');
-      const massInput = document.getElementById('entry-mass');
       const readNum = id => { const el = document.getElementById(id); return el && el.value !== '' ? parseFloat(el.value) : null; };
-      const submittedCogX = readNum('entry-cog-x');
-      const submittedCogY = readNum('entry-cog-y');
-      const submittedCogZ = readNum('entry-cog-z');
-      const submittedMass = massInput && massInput.value !== '' ? parseFloat(massInput.value) : null;
-
+      const submittedMass = readNum('entry-mass');
+      const cog = { x: readNum('entry-cog-x'), y: readNum('entry-cog-y'), z: readNum('entry-cog-z') };
 
       if (!fileInput.files || fileInput.files.length === 0) {
         showToast('Please select a PDF document', 'error');
@@ -608,75 +627,52 @@ function initUploadModal() {
         return;
       }
 
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting...';
-        submitBtn.style.opacity = '0.6';
-        submitBtn.style.background = '';
-        submitBtn.style.color = '';
-      }
-
-      showToast('Uploading and evaluating model...', 'info');
-
       const user = await window.cmdSupabase.getCurrentUser();
       if (!user) {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Upload Model for Evaluation \u2192';
-          submitBtn.style.opacity = '1';
-        }
         showToast('Please sign in to submit CAD models', 'error');
         setTimeout(() => { window.location.href = 'auth.html'; }, 800);
         return;
       }
 
       const name = user.user_metadata?.display_name || user.email.split('@')[0];
-      const email = user.email;
       const path = `submissions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
       const pdfUrl = window.cmdSupabase.getPublicUrl('submissions', path);
+      const token = ++submissionToken;
 
-      try {
-        const uploadTask = window.cmdSupabase.uploadFile('submissions', path, file).catch(() => 'uploaded_locally');
-        const scoringTask = window.cmdSupabase.submitChallengeEntryWithScoring({
-          member_name: name,
-          member_email: email,
-          model_title: 'CAD Competition Submission',
-          pdf_url: pdfUrl,
-          notes: '',
-          submitted_mass: submittedMass,
-          submitted_cog_x: submittedCogX,
-          submitted_cog_y: submittedCogY,
-          submitted_cog_z: submittedCogZ
-        });
+      // Instant feedback
+      showPending(submittedMass, cog);
+      showToast('Submission received. Verifying in the background...', 'success');
 
-        const [uploadedUrl, result] = await Promise.all([uploadTask, scoringTask]);
+      // Background: PDF upload
+      window.cmdSupabase.uploadFile('submissions', path, file)
+        .catch(err => console.error('PDF upload failed:', err));
 
-        latestResult = result;
-        lastMass = submittedMass;
-        lastCog = { x: submittedCogX, y: submittedCogY, z: submittedCogZ };
-
-        loadLeaderboardTable();
-
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.setAttribute('data-state', 'ready_results');
-          submitBtn.textContent = 'View Results \u2192';
-          submitBtn.style.background = 'var(--neon-green)';
-          submitBtn.style.color = '#000000';
-          submitBtn.style.opacity = '1';
+      // Background: scoring
+      window.cmdSupabase.submitChallengeEntryWithScoring({
+        member_name: name,
+        member_email: user.email,
+        model_title: 'CAD Competition Submission',
+        pdf_url: pdfUrl,
+        notes: '',
+        submitted_mass: submittedMass,
+        submitted_cog_x: cog.x,
+        submitted_cog_y: cog.y,
+        submitted_cog_z: cog.z
+      }).then(result => {
+        const stillViewing = token === submissionToken && resultsView.style.display === 'block';
+        if (stillViewing) {
+          displayResults(result, submittedMass, cog);
+        } else {
+          showToast(`Verified: +${result.pointsAwarded} pts`, 'success');
         }
-
-        showToast('Done! Click View Results to see your score.', 'success');
-      } catch (err) {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Upload Model for Evaluation \u2192';
-          submitBtn.style.opacity = '1';
-          submitBtn.style.background = '';
-          submitBtn.style.color = '';
+        if (result.syncDone) result.syncDone.then(loadLeaderboardTable);
+      }).catch(err => {
+        if (token === submissionToken && resultsView.style.display === 'block') {
+          setResultsHeader('VERIFICATION FAILED', '#FEECEB', '#C8322B',
+            `We could not verify this entry: ${err.message || 'unknown error'}. Please submit again.`);
         }
-        showToast(err.message || 'Submission encountered an error', 'error');
-      }
+        showToast(err.message || 'Verification failed', 'error');
+      });
     });
   }
 }
