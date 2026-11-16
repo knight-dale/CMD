@@ -653,6 +653,68 @@ async function isAdmin() {
   }
 }
 
+async function submitProblemSubmission(problemId, approachTitle, approachDescription, pdfFile, imageFiles) {
+  const client = getClient();
+  if (!client) throw new Error('Supabase client unconfigured.');
+
+  const user = await getCurrentUser();
+  if (!user) throw new Error('User not authenticated.');
+
+  const name = user.user_metadata?.display_name || user.email.split('@')[0];
+  const email = user.email;
+
+  // Upload PDF if provided
+  let pdfUrl = null;
+  if (pdfFile) {
+    const path = `problem_approaches/${problemId}/${Date.now()}_${pdfFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    pdfUrl = await uploadFile('submissions', path, pdfFile);
+  }
+
+  // Upload images if provided
+  let imageUrls = [];
+  if (imageFiles && imageFiles.length > 0) {
+    for (let i = 0; i < Math.min(imageFiles.length, 5); i++) {
+      const imageFile = imageFiles[i];
+      const path = `problem_approaches/${problemId}/${Date.now()}_${i}_${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const imageUrl = await uploadFile('submissions', path, imageFile);
+      imageUrls.push(imageUrl);
+    }
+  }
+
+  // Insert the problem submission
+  const { data, error } = await client.from('problem_submissions').insert({
+    problem_id: problemId,
+    member_name: name,
+    member_email: email,
+    approach_title: approachTitle,
+    approach_description: approachDescription,
+    pdf_url: pdfUrl,
+    images: imageUrls,
+    status: 'pending',
+    votes: 0,
+    is_approved: false
+  }).select();
+
+  if (error) throw error;
+  return data;
+}
+
+async function fetchProblemSubmissions(problemId) {
+  const client = getClient();
+  if (!client) return [];
+
+  try {
+    let query = client.from('problem_submissions').select('*').order('created_at', { ascending: false });
+    if (problemId) query = query.eq('problem_id', problemId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Error fetching problem submissions:', err);
+    return [];
+  }
+}
+
 window.cmdSupabase = {
   initSupabase,
   getCurrentUser,
@@ -690,5 +752,7 @@ window.cmdSupabase = {
   fetchSiteMedia,
   saveSiteMediaSlot,
   resetSiteMediaSlot,
-  isAdmin
+  isAdmin,
+  submitProblemSubmission,
+  fetchProblemSubmissions
 };

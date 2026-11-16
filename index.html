@@ -386,6 +386,66 @@
     </div>
   </section>
 
+  <section class="section-cream" id="problems" style="border-top:1px solid var(--border-light);">
+    <div class="container">
+      <div class="section-header-row">
+        <div>
+          <span class="mono-tag muted-light">06 / ENGINEERING PROBLEMS</span>
+          <h2 class="section-header-title">Real-world problems to solve.</h2>
+        </div>
+        <span class="mono-tag orange">SUBMIT YOUR APPROACH</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-bottom:32px;">
+        <div class="problem-card" style="background:#F5F0EB;padding:24px;border-radius:4px;border-left:4px solid var(--neon-green);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span class="mono-tag orange">PROBLEM 1</span>
+            <span class="badge-tag">LEATHER TURNING DRUM</span>
+          </div>
+          <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:12px;color:var(--text-light-primary);">Leather Turning Drum Design</h3>
+          <p style="font-size:0.9rem;color:var(--text-light-secondary);line-height:1.7;margin-bottom:16px;">
+            Design a working leather turning drum for tannery operations. The drum must address four critical failure modes:
+          </p>
+          <ul style="font-size:0.88rem;color:var(--text-light-secondary);line-height:1.8;padding-left:20px;margin-bottom:16px;">
+            <li><strong>Leakage</strong> - Fluid loss during rotation cycles</li>
+            <li><strong>Corrosion</strong> - Chemical degradation from tanning solutions</li>
+            <li><strong>Loading/Off-loading difficulty</strong> - Manual handling inefficiency</li>
+            <li><strong>Low motor torque</strong> - Insufficient rotational force for loaded drum</li>
+          </ul>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button type="button" class="btn-green" style="flex:1;min-width:160px;" id="submit-design-approach-btn">Submit Design Approach &rarr;</button>
+          </div>
+        </div>
+
+        <div class="problem-card" style="background:#F5F0EB;padding:24px;border-radius:4px;border-left:4px solid var(--neon-green);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span class="mono-tag orange">REFERENCE IMAGES</span>
+          </div>
+          <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:12px;color:var(--text-light-primary);">Technical Reference Photos</h3>
+          <p style="font-size:0.9rem;color:var(--text-light-secondary);line-height:1.7;margin-bottom:16px;">
+            Click any image to view full size. These reference photos show the four critical failure modes in existing leather turning drums.
+          </p>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+            <img src="assets/image1.jpeg" alt="Leather drum leakage problem" style="width:100%;height:auto;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="openImageModal(this.src)">
+            <img src="assets/image2.jpeg" alt="Leather drum corrosion problem" style="width:100%;height:auto;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="openImageModal(this.src)">
+            <img src="assets/image3.jpeg" alt="Leather drum loading difficulty" style="width:100%;height:auto;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="openImageModal(this.src)">
+            <img src="assets/image4.jpeg" alt="Leather drum motor torque issue" style="width:100%;height:auto;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="openImageModal(this.src)">
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#E5E4DE;padding:24px;border-radius:4px;">
+        <h4 style="font-size:1rem;font-weight:700;margin-bottom:12px;color:var(--text-light-primary);">How it works</h4>
+        <ul style="font-size:0.88rem;color:var(--text-light-secondary);line-height:1.8;padding-left:20px;">
+          <li>Real engineering problems are posted by industry partners or club members</li>
+          <li>Members submit design approaches, CAD models, or analysis</li>
+          <li>Community discusses and votes on most promising solutions</li>
+          <li>Top approaches may be prototyped in the workshop</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <section class="section-cream" id="leaderboard" style="border-top:1px solid var(--border-light);">
     <div class="container">
       <div class="section-header-row">
@@ -593,6 +653,62 @@
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button type="button" class="btn-black" id="res-goto-leaderboard-btn" style="width:100%;">View on Standings Leaderboard &rarr;</button>
           <button type="button" class="btn-dark-outline" id="res-submit-another-btn" style="width:100%;font-size:0.8rem;padding:9px;color:var(--text-light-primary);border-color:var(--border-light);">Submit Another Model</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="design-approach-modal" class="modal-backdrop">
+    <div class="modal-dialog-card">
+      <button type="button" class="modal-close-btn" id="design-approach-close-button" aria-label="Close modal">&times;</button>
+      <div id="design-approach-form-view">
+        <span class="mono-tag blue">DESIGN APPROACH</span>
+        <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Design Approach</h3>
+        <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
+          Submit your design approach for the Leather Turning Drum problem. Upload sketches, analysis, or CAD concepts for community review.
+        </p>
+
+        <div style="background:#F0F2F5;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-size:0.82rem;color:var(--text-light-secondary);">
+          Submitting as: <strong id="design-approach-user-name" style="color:var(--text-light-primary);">Authenticated Member</strong>
+          <span id="design-approach-user-email" style="display:block;font-size:0.75rem;font-family:var(--font-mono);color:var(--text-light-secondary);margin-top:2px;"></span>
+        </div>
+
+        <form id="design-approach-submission-form" style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Approach Title</label>
+            <input type="text" id="approach-title" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. Innovative Sealing Mechanism for Leather Drum" required>
+          </div>
+          
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Design Description</label>
+            <textarea id="approach-description" rows="5" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;resize:vertical;" placeholder="Describe your design approach, key innovations, and how it addresses the four failure modes (leakage, corrosion, loading/off-loading, motor torque)..." required></textarea>
+          </div>
+
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">PDF Document (optional)</label>
+            <input type="file" id="approach-pdf-file" accept=".pdf" style="width:100%;padding:8px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.85rem;">
+            <small style="color:var(--text-light-secondary);">Upload a PDF with sketches, analysis, or detailed drawings (max 10MB)</small>
+          </div>
+
+          <div>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Images (optional)</label>
+            <input type="file" id="approach-images" accept="image/*" multiple style="width:100%;padding:8px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.85rem;">
+            <small style="color:var(--text-light-secondary);">Upload images/sketches of your design (max 5 files, 5MB each)</small>
+          </div>
+
+          <button type="submit" class="btn-green" id="submit-design-approach-form-btn" style="width:100%;margin-top:6px;">Submit Design Approach &rarr;</button>
+        </form>
+      </div>
+
+      <div id="design-approach-success-view" style="display:none;">
+        <span class="mono-tag" style="background:#E6F9EE;color:#0B8A3E;">SUBMITTED</span>
+        <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Design Approach Submitted</h3>
+        <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
+          Your design approach has been submitted for community review. It will be visible once approved.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button type="button" class="btn-black" id="design-approach-view-submissions-btn" style="width:100%;">View All Submissions &rarr;</button>
+          <button type="button" class="btn-dark-outline" id="design-approach-submit-another-btn" style="width:100%;font-size:0.8rem;padding:9px;color:var(--text-light-primary);border-color:var(--border-light);">Submit Another Approach</button>
         </div>
       </div>
     </div>

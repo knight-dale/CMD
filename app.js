@@ -652,6 +652,16 @@ function initUploadModal() {
       }
 
       const name = user.user_metadata?.display_name || user.email.split('@')[0];
+// Check if user has submitted a problem solution first
+      const hasProblemSubmission = await checkProblemSubmission(user.email);
+      if (!hasProblemSubmission) {
+        showToast('You must first submit a solution to the Engineering Problem (Leather Turning Drum) before entering the weekly challenge.', 'error');
+        setTimeout(() => {
+          document.getElementById('problems')?.scrollIntoView({ behavior: 'smooth' });
+        }, 1000);
+        return;
+      }
+
       const token = ++submissionToken;
 
       // Instant feedback
@@ -686,6 +696,167 @@ function initUploadModal() {
       });
     });
   }
+function openImageModal(src) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:10000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+  modal.innerHTML = '<img src="' + src + '" style="max-width:90%;max-height:90%;object-fit:contain;" alt="Full size image">';
+  modal.onclick = () => modal.remove();
+  document.body.appendChild(modal);
+}
+
+async function checkProblemSubmission(userEmail) {
+  const client = window.cmdSupabase?.getClient();
+  if (!client) return false;
+  
+  try {
+    const { data, error } = await client.from('challenge_submissions')
+      .select('*')
+      .eq('member_email', userEmail.toLowerCase().trim())
+      .maybeSingle();
+    
+    if (error) return false;
+    
+    // Check if user has an active submission (any status)
+    if (data) {
+      // User has submitted before - allow them to proceed
+      return true;
+    }
+    
+    // No submission found - block and show message
+    return false;
+  } catch (err) {
+    console.error('Error checking problem submission:', err);
+    return false;
+  }
+}
+
+function initDesignApproachModal() {
+  const modal = document.getElementById('design-approach-modal');
+  const openBtn = document.getElementById('submit-design-approach-btn');
+  const closeBtn = document.getElementById('design-approach-close-button');
+  const form = document.getElementById('design-approach-submission-form');
+  const formView = document.getElementById('design-approach-form-view');
+  const successView = document.getElementById('design-approach-success-view');
+  const submitAnotherBtn = document.getElementById('design-approach-submit-another-btn');
+  const viewSubmissionsBtn = document.getElementById('design-approach-view-submissions-btn');
+
+  if (!modal) return;
+
+  function resetModalState() {
+    if (formView) formView.style.display = 'block';
+    if (successView) successView.style.display = 'none';
+    if (form) form.reset();
+  }
+
+  // Open modal when button is clicked
+  if (openBtn) {
+    openBtn.addEventListener('click', async () => {
+      if (!window.cmdSupabase) return;
+      
+      const user = await window.cmdSupabase.getCurrentUser();
+      if (!user) {
+        showToast('Please sign in to submit a design approach.', 'error');
+        setTimeout(() => {
+          document.getElementById('top-login-btn')?.click();
+        }, 1000);
+        return;
+      }
+
+      // Populate user info
+      const name = user.user_metadata?.display_name || user.email.split('@')[0];
+      const nameEl = document.getElementById('design-approach-user-name');
+      const emailEl = document.getElementById('design-approach-user-email');
+      if (nameEl) nameEl.textContent = name;
+      if (emailEl) emailEl.textContent = user.email;
+
+      resetModalState();
+      modal.style.display = 'flex';
+    });
+  }
+
+  // Close modal
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      resetModalState();
+    });
+  }
+
+  // Close on backdrop click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+      resetModalState();
+    }
+  });
+
+  // Handle form submission
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const approachTitle = document.getElementById('approach-title').value.trim();
+      const approachDescription = document.getElementById('approach-description').value.trim();
+      const pdfFile = document.getElementById('approach-pdf-file').files[0];
+      const imageFiles = document.getElementById('approach-images').files;
+
+      if (!approachTitle || !approachDescription) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      const submitBtn = document.getElementById('submit-design-approach-form-btn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+      }
+
+      try {
+        // For now, using a placeholder problem ID. In the future, this would be dynamically determined
+        const problemId = '00000000-0000-0000-0000-000000000001'; // UUID placeholder for Problem 1
+        
+        await window.cmdSupabase.submitProblemSubmission(
+          problemId,
+          approachTitle,
+          approachDescription,
+          pdfFile,
+          imageFiles
+        );
+
+        showToast('Design approach submitted successfully!', 'success');
+        
+        // Show success view
+        if (formView) formView.style.display = 'none';
+        if (successView) successView.style.display = 'block';
+        
+      } catch (err) {
+        console.error('Error submitting design approach:', err);
+        showToast(err.message || 'Failed to submit design approach. Please try again.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Design Approach →';
+        }
+      }
+    });
+  }
+
+  // Submit another approach
+  if (submitAnotherBtn) {
+    submitAnotherBtn.addEventListener('click', () => {
+      resetModalState();
+    });
+  }
+
+  // View all submissions - for now just close modal
+  if (viewSubmissionsBtn) {
+    viewSubmissionsBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      resetModalState();
+      // In the future, this could navigate to a submissions page
+      showToast('Submissions view coming soon!', 'info');
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -697,6 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSuggestionForm();
   loadLeaderboardTable();
   initUploadModal();
+  initDesignApproachModal();
 
   let lastY = window.scrollY;
   function handleNavScroll() {
