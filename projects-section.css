@@ -1,0 +1,92 @@
+/* projects-section.css
+   Extends the existing .project-editorial-card styles in styles.css.
+   Uses the site's existing tokens (--font-mono, --text-light-secondary, --transition). */
+
+#projects {
+  scroll-margin-top: 76px; /* clears the sticky nav when jumping to the section */
+}
+
+/* ---------- 3 first, the rest on demand ---------- */
+#featured-projects-grid:not(.show-all) .is-extra {
+  display: none;
+}
+
+#featured-projects-grid.show-all .is-extra {
+  animation: project-reveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes project-reveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #featured-projects-grid.show-all .is-extra {
+    animation: none;
+  }
+}
+
+/* ---------- Toggle button ---------- */
+.projects-toggle-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 48px;
+}
+
+.projects-toggle-row[hidden] {
+  display: none;
+}
+
+.projects-toggle-row .btn-black:focus-visible,
+.project-card-link:focus-visible {
+  outline: 2px solid var(--text-light-primary);
+  outline-offset: 3px;
+}
+
+/* ---------- Card details ---------- */
+#featured-projects-grid .project-card-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.project-card-link {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px;
+  transition: opacity var(--transition);
+}
+
+.project-card-link:hover {
+  opacity: 0.6;
+}
+
+.project-card-specs {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-light-secondary);
+}
+
+/* Shown when a project has no image, or the image URL fails to load */
+.project-card-image-wrap.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-card-image-wrap.is-empty::after {
+  content: attr(data-label);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-light-secondary);
+}

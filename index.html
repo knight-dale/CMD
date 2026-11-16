@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="projects-section.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body id="top">
@@ -160,7 +161,7 @@
           <span class="mono-tag muted-light">02 / SELECTED WORK</span>
           <h2 class="section-header-title">Built here. Built different.</h2>
         </div>
-        <a href="#all-projects" class="link-arrow">View all projects &nearr;</a>
+        <a href="#projects" class="link-arrow" id="view-all-projects-link">View all projects &nearr;</a>
       </div>
 
       <div class="projects-three-col" id="featured-projects-grid">
@@ -220,6 +221,10 @@
             <span>Rocker Bogie</span>
           </div>
         </article>
+      </div>
+
+      <div class="projects-toggle-row" id="projects-toggle-row" hidden>
+        <button type="button" class="btn-black" id="projects-toggle-btn" aria-expanded="false" aria-controls="featured-projects-grid">View all projects</button>
       </div>
 
       <div class="mindset-banner">
@@ -583,5 +588,6 @@
   <script src="projects.js"></script>
   <script src="supabase-client.js"></script>
   <script src="app.js"></script>
+  <script src="projects-section.js"></script>
 </body>
 </html>
