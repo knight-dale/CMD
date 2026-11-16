@@ -467,7 +467,10 @@ function initUploadModal() {
     setText('res-mass-val', mass != null ? `${mass} g` : 'N/A');
     setText('res-cog-val', cog && cog.x != null ? `X ${cog.x}, Y ${cog.y}, Z ${cog.z} mm` : 'N/A');
     setText('res-prompt-val', 'Checking...');
+    setText('res-late-penalty', 'Checking...');
+    setText('res-early-bird', 'Checking...');
     setBadge('res-mass-badge'); setBadge('res-cog-badge'); setBadge('res-prompt-badge');
+    setBadge('res-late-penalty-badge'); setBadge('res-early-bird-badge');
     setText('res-round-points', '...');
     setText('res-total-points', '...');
   }
@@ -529,6 +532,42 @@ function initUploadModal() {
       promptBadge.textContent = result.promptBonus ? '+10 PTS' : '+0 PTS';
       promptBadge.style.background = result.promptBonus ? '#E6F9EE' : '#F0F2F5';
       promptBadge.style.color = result.promptBonus ? '#0B8A3E' : 'var(--text-light-secondary)';
+    }
+
+    // Display late penalty if applicable
+    const latePenaltyEl = document.getElementById('res-late-penalty');
+    if (latePenaltyEl) {
+      const penalty = result.latePenalty || 0;
+      latePenaltyEl.textContent = penalty > 0 ? `Submitted after deadline (-${penalty} PTS)` : 'On time';
+      latePenaltyEl.style.background = penalty > 0 ? '#FEECEB' : '#E6F9EE';
+      latePenaltyEl.style.color = penalty > 0 ? '#C8322B' : '#0B8A3E';
+    }
+
+    // Display early bird bonus if applicable
+    const earlyBirdEl = document.getElementById('res-early-bird');
+    if (earlyBirdEl) {
+      const bonus = result.earlyBirdBonus || 0;
+      earlyBirdEl.textContent = bonus > 0 ? `First 3 submission (+${bonus} PTS)` : 'Not in first 3';
+      earlyBirdEl.style.background = bonus > 0 ? '#E6F9EE' : '#F0F2F5';
+      earlyBirdEl.style.color = bonus > 0 ? '#0B8A3E' : 'var(--text-light-secondary)';
+    }
+
+    // Display late penalty badge
+    const latePenaltyBadge = document.getElementById('res-late-penalty-badge');
+    if (latePenaltyBadge) {
+      const penalty = result.latePenalty || 0;
+      latePenaltyBadge.textContent = penalty > 0 ? `-${penalty} pts` : '+0 pts';
+      latePenaltyBadge.style.background = penalty > 0 ? '#FEECEB' : '#E6F9EE';
+      latePenaltyBadge.style.color = penalty > 0 ? '#C8322B' : '#0B8A3E';
+    }
+
+    // Display early bird bonus badge
+    const earlyBirdBadge = document.getElementById('res-early-bird-badge');
+    if (earlyBirdBadge) {
+      const bonus = result.earlyBirdBonus || 0;
+      earlyBirdBadge.textContent = bonus > 0 ? `+${bonus} PTS` : '+0 PTS';
+      earlyBirdBadge.style.background = bonus > 0 ? '#E6F9EE' : '#F0F2F5';
+      earlyBirdBadge.style.color = bonus > 0 ? '#0B8A3E' : 'var(--text-light-secondary)';
     }
 
     if (roundPts) roundPts.textContent = `+${result.pointsAwarded || 0} PTS`;
@@ -601,20 +640,9 @@ function initUploadModal() {
       e.preventDefault();
       if (!window.cmdSupabase) return;
 
-      const fileInput = document.getElementById('entry-pdf');
       const readNum = id => { const el = document.getElementById(id); return el && el.value !== '' ? parseFloat(el.value) : null; };
       const submittedMass = readNum('entry-mass');
       const cog = { x: readNum('entry-cog-x'), y: readNum('entry-cog-y'), z: readNum('entry-cog-z') };
-
-      if (!fileInput.files || fileInput.files.length === 0) {
-        showToast('Please select a PDF document', 'error');
-        return;
-      }
-      const file = fileInput.files[0];
-      if (file.type !== 'application/pdf') {
-        showToast('Only PDF files are accepted for review', 'error');
-        return;
-      }
 
       const user = await window.cmdSupabase.getCurrentUser();
       if (!user) {
@@ -624,24 +652,18 @@ function initUploadModal() {
       }
 
       const name = user.user_metadata?.display_name || user.email.split('@')[0];
-      const path = `submissions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-      const pdfUrl = window.cmdSupabase.getPublicUrl('submissions', path);
       const token = ++submissionToken;
 
       // Instant feedback
       showPending(submittedMass, cog);
       showToast('Submission received. Verifying in the background...', 'success');
 
-      // Background: PDF upload
-      window.cmdSupabase.uploadFile('submissions', path, file)
-        .catch(err => console.error('PDF upload failed:', err));
-
-      // Background: scoring
+      // Background: scoring only (no PDF upload needed)
       window.cmdSupabase.submitChallengeEntryWithScoring({
         member_name: name,
         member_email: user.email,
         model_title: 'CAD Competition Submission',
-        pdf_url: pdfUrl,
+        pdf_url: '',
         notes: '',
         submitted_mass: submittedMass,
         submitted_cog_x: cog.x,

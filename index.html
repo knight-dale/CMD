@@ -446,7 +446,7 @@
           <span class="mono-tag orange">TECHNICAL LEAD</span>
           <h3 class="contact-name">Jonathan Edwards</h3>
           <p class="contact-role">CAD &amp; Additive Manufacturing</p>
-          <a href="mailto:tech@students.dkut.ac.ke">edwardsjonathan457@gmail.com</a>
+          <a href="mailto:jonathan.edwards22@students.dkut.ac.ke">jonathan.edwards22@students.dkut.ac.ke</a>
           <a href="tel:+254799610782">+254 799 610 782</a>
         </article>
       </div>
@@ -504,7 +504,7 @@
         <span class="mono-tag orange">CAD SUBMISSION</span>
         <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Model Evaluation</h3>
         <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
-          Provide your measured mass, centre of gravity, and CAD drawing sheet PDF for competition scoring.
+          Provide your measured mass, centre of mass, and CAD drawing sheet PDF for competition scoring.
         </p>
 
         <div style="background:#F0F2F5;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-size:0.82rem;color:var(--text-light-secondary);">
@@ -518,18 +518,15 @@
             <input type="number" id="entry-mass" step="0.001" min="0" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. 3.72" required>
           </div>
           <div>
-            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Gravity from Origin (mm)</label>
+            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Centre of Mass from Origin (mm)</label>
             <div class="cog-grid">
               <input type="number" id="entry-cog-x" step="0.001" placeholder="X" required>
               <input type="number" id="entry-cog-y" step="0.001" placeholder="Y" required>
               <input type="number" id="entry-cog-z" step="0.001" placeholder="Z" required>
             </div>
           </div>
-          <div>
-            <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Model Documentation (PDF)</label>
-            <input type="file" id="entry-pdf" accept="application/pdf" style="width:100%;padding:8px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-size:0.85rem;" required>
-          </div>
-          <button type="submit" class="btn-black" id="entry-submit-btn" style="width:100%;margin-top:6px;">Upload Model for Evaluation &rarr;</button>
+          
+          <button type="submit" class="btn-black" id="entry-submit-btn" style="width:100%;margin-top:6px;">Submit for Evaluation &rarr;</button>
         </form>
       </div>
 
@@ -551,7 +548,7 @@
 
           <div style="background:#F0F2F5;padding:12px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Centre of Gravity</div>
+              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Centre of Mass</div>
               <div style="font-weight:700;font-size:0.95rem;" id="res-cog-val">0.000 mm</div>
             </div>
             <div id="res-cog-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+15 PTS</div>
@@ -563,6 +560,22 @@
               <div style="font-weight:700;font-size:0.95rem;" id="res-prompt-val">Standard</div>
             </div>
             <div id="res-prompt-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+0 PTS</div>
+          </div>
+
+          <div style="background:#F0F2F5;padding:12px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Late Submission Penalty</div>
+              <div style="font-weight:700;font-size:0.95rem;" id="res-late-penalty">On time</div>
+            </div>
+            <div id="res-late-penalty-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+0 PTS</div>
+          </div>
+
+          <div style="background:#F0F2F5;padding:12px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-light-secondary);text-transform:uppercase;">Early Bird Bonus (First 3)</div>
+              <div style="font-weight:700;font-size:0.95rem;" id="res-early-bird">Not in first 3</div>
+            </div>
+            <div id="res-early-bird-badge" style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;padding:4px 8px;border-radius:3px;">+0 PTS</div>
           </div>
 
           <div style="background:#15181B;color:#FFFFFF;padding:14px 16px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">

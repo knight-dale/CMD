@@ -399,9 +399,7 @@ async function renderSubmissionsList() {
       <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${hasAnyCog ? cogOk : 'N/A'}</td>
       <td style="${promptStyle}font-family:var(--font-mono);font-size:0.85rem;">${promptBonusText}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
-      <td>
-        ${isCleanUrl ? `<a href="${s.pdf_url}" target="_blank" class="btn-sm-action">Inspect PDF</a>` : `<span style="color:var(--text-dark-secondary);">No PDF</span>`}
-      </td>
+      
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${s.notes || 'None'}</td>
     `;
     tbody.appendChild(tr);
