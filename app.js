@@ -885,4 +885,4 @@ document.addEventListener('DOMContentLoaded', () => {
     lastY = curY;
   }
   window.addEventListener('scroll', handleNavScroll);
-});
+});}
