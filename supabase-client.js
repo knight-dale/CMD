@@ -169,7 +169,7 @@ async function fetchLeaderboard() {
   if (!client) return null;
   const { data, error } = await client
     .from('leaderboard')
-    .select('id, display_name, points, badges, submission_count')
+    .select('id, member_email, display_name, points, badges, submission_count')
     .order('points', { ascending: false })
     .limit(50);
   if (error) {
