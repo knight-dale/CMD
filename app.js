@@ -411,7 +411,6 @@ function initSuggestionForm() {
 function initUploadModal() {
   const modal = document.getElementById('model-upload-modal');
   const openBtns = [
-    document.getElementById('open-upload-modal-btn'),
     document.getElementById('submit-model-modal-btn'),
     document.getElementById('open-submit-modal-link')
   ];
@@ -860,6 +859,11 @@ function initDesignApproachModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize Supabase client explicitly
+  if (window.cmdSupabase && window.cmdSupabase.initSupabase) {
+    window.cmdSupabase.initSupabase();
+  }
+  
   loadSiteMedia();
   initNavigation();
   initAuthState();
@@ -885,4 +889,4 @@ document.addEventListener('DOMContentLoaded', () => {
     lastY = curY;
   }
   window.addEventListener('scroll', handleNavScroll);
-});}
+});

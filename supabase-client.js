@@ -667,7 +667,7 @@ async function submitProblemSubmission(problemId, approachTitle, approachDescrip
   let pdfUrl = null;
   if (pdfFile) {
     const path = `problem_approaches/${problemId}/${Date.now()}_${pdfFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-    pdfUrl = await uploadFile('submissions', path, pdfFile);
+    pdfUrl = await uploadFile('problem-approaches', path, pdfFile);
   }
 
   // Upload images if provided
@@ -676,7 +676,7 @@ async function submitProblemSubmission(problemId, approachTitle, approachDescrip
     for (let i = 0; i < Math.min(imageFiles.length, 5); i++) {
       const imageFile = imageFiles[i];
       const path = `problem_approaches/${problemId}/${Date.now()}_${i}_${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-      const imageUrl = await uploadFile('submissions', path, imageFile);
+      const imageUrl = await uploadFile('problem-approaches', path, imageFile);
       imageUrls.push(imageUrl);
     }
   }
