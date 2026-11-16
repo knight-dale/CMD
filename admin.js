@@ -61,6 +61,63 @@ function initAdminNavigation() {
   });
 }
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function listToText(value) {
+  return Array.isArray(value) ? value.join(', ') : (value || '');
+}
+
+// Select a value even if the saved project uses a category/stage that is no longer in the dropdown.
+function setSelectValue(select, value) {
+  if (value && ![...select.options].some(o => o.value === value)) {
+    const opt = new Option(value, value);
+    opt.dataset.temp = '1';
+    select.add(opt);
+  }
+  select.value = value || select.options[0].value;
+}
+
+function resetProjectForm() {
+  document.querySelectorAll('#p-category option[data-temp], #p-stage option[data-temp]')
+    .forEach(o => o.remove());
+
+  const form = document.getElementById('project-admin-form');
+  if (form) form.reset();
+
+  document.getElementById('p-id').value = '';
+  document.getElementById('project-form-tag').textContent = 'NEW CAD MODEL';
+  document.getElementById('project-form-heading').textContent = 'Upload Project to Archive';
+  document.getElementById('p-submit-button').textContent = 'Register Project in Vault';
+  document.getElementById('p-cancel-button').style.display = 'none';
+  document.getElementById('p-edit-hint').style.display = 'none';
+}
+
+function startProjectEdit(p) {
+  document.getElementById('p-id').value = p.id;
+  document.getElementById('p-title').value = p.title || '';
+  setSelectValue(document.getElementById('p-category'), p.category);
+  setSelectValue(document.getElementById('p-stage'), p.stage);
+  document.getElementById('p-tools').value = listToText(p.tools);
+  document.getElementById('p-specs').value = listToText(p.specs);
+  document.getElementById('p-pdf-url').value = p.pdf_url || '';
+  document.getElementById('p-img-url').value = p.image_url || '';
+  document.getElementById('p-desc').value = p.description || '';
+  document.getElementById('p-pdf-file').value = '';
+  document.getElementById('p-img-file').value = '';
+
+  document.getElementById('project-form-tag').textContent = 'EDITING PROJECT';
+  document.getElementById('project-form-heading').textContent = 'Edit Project Details';
+  document.getElementById('p-submit-button').textContent = 'Save Changes';
+  document.getElementById('p-cancel-button').style.display = 'inline-flex';
+  document.getElementById('p-edit-hint').style.display = 'block';
+
+  document.getElementById('project-form-heading').closest('.admin-box')
+    .scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function renderProjectsList() {
   const tbody = document.getElementById('projects-table-body');
   if (!tbody) return;
@@ -79,21 +136,27 @@ async function renderProjectsList() {
   projects.forEach(p => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="font-weight:700;">${p.title}</td>
-      <td><span class="mono-tag" style="color:#C8CDD5;">${p.category}</span></td>
-      <td><span class="mono-tag orange">${p.stage}</span></td>
-      <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${(p.tools || []).join(', ')}</td>
+      <td style="font-weight:700;">${escapeHtml(p.title)}</td>
+      <td><span class="mono-tag" style="color:#C8CDD5;">${escapeHtml(p.category)}</span></td>
+      <td><span class="mono-tag orange">${escapeHtml(p.stage)}</span></td>
+      <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${escapeHtml(listToText(p.tools))}</td>
       <td style="text-align:right;">
-        <button type="button" class="btn-sm-danger btn-delete-project" data-id="${p.id}">Delete</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button type="button" class="btn-sm-action btn-edit-project">Edit</button>
+          <button type="button" class="btn-sm-danger btn-delete-project">Delete</button>
+        </div>
       </td>
     `;
 
-    const delBtn = tr.querySelector('.btn-delete-project');
-    delBtn.addEventListener('click', async () => {
+    tr.querySelector('.btn-edit-project').addEventListener('click', () => startProjectEdit(p));
+
+    tr.querySelector('.btn-delete-project').addEventListener('click', async () => {
       if (confirm('Confirm deletion of this CAD project?')) {
         try {
           await window.cmdSupabase.deleteProject(p.id);
           showToast('Project removed from vault', 'success');
+          // If this project was open in the form, clear it so it can't be "saved" back.
+          if (document.getElementById('p-id').value === String(p.id)) resetProjectForm();
           renderProjectsList();
         } catch (err) {
           showToast(err.message || 'Error deleting project', 'error');
@@ -109,21 +172,30 @@ function initProjectUploadForm() {
   const form = document.getElementById('project-admin-form');
   if (!form) return;
 
+  const submitBtn = document.getElementById('p-submit-button');
+  const cancelBtn = document.getElementById('p-cancel-button');
+  if (cancelBtn) cancelBtn.addEventListener('click', resetProjectForm);
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const title = document.getElementById('p-title').value;
+    const id = document.getElementById('p-id').value;
+    const isEdit = Boolean(id);
+
+    const title = document.getElementById('p-title').value.trim();
     const category = document.getElementById('p-category').value;
     const stage = document.getElementById('p-stage').value;
     const toolsStr = document.getElementById('p-tools').value;
     const specsStr = document.getElementById('p-specs').value;
     const desc = document.getElementById('p-desc').value;
 
+    // When editing, these hold the current URLs. A newly chosen file replaces them.
     let pdfUrl = document.getElementById('p-pdf-url').value.trim();
     let imgUrl = document.getElementById('p-img-url').value.trim();
     const pdfFile = document.getElementById('p-pdf-file').files[0];
     const imgFile = document.getElementById('p-img-file').files[0];
 
-    showToast('Uploading CAD project data...', 'info');
+    if (submitBtn) submitBtn.disabled = true;
+    showToast(isEdit ? 'Saving project changes...' : 'Uploading CAD project data...', 'info');
 
     try {
       if (pdfFile && window.cmdSupabase) {
@@ -135,27 +207,35 @@ function initProjectUploadForm() {
         imgUrl = await window.cmdSupabase.uploadFile('projects', path, imgFile);
       }
 
-      const tools = toolsStr.split(',').map(s => s.trim()).filter(Boolean);
-      const specs = specsStr.split(',').map(s => s.trim()).filter(Boolean);
-
-      await window.cmdSupabase.addProject({
+      const fields = {
         title,
         category,
         stage,
-        tools,
-        specs,
+        tools: toolsStr.split(',').map(s => s.trim()).filter(Boolean),
+        specs: specsStr.split(',').map(s => s.trim()).filter(Boolean),
         description: desc,
         pdf_url: pdfUrl,
-        image_url: imgUrl,
-        featured: true,
-        votes: 0
-      });
+        image_url: imgUrl
+      };
 
-      showToast('Project successfully registered in vault', 'success');
-      form.reset();
+      if (isEdit) {
+        const rows = await window.cmdSupabase.updateProject(id, fields);
+        // Supabase returns no error and zero rows when a row-level security policy blocks an update.
+        if (Array.isArray(rows) && rows.length === 0) {
+          throw new Error('No changes were saved. The projects table may not allow updates (see RLS policy).');
+        }
+        showToast('Project updated', 'success');
+      } else {
+        await window.cmdSupabase.addProject({ ...fields, featured: true, votes: 0 });
+        showToast('Project successfully registered in vault', 'success');
+      }
+
+      resetProjectForm();
       renderProjectsList();
     } catch (err) {
       showToast(err.message || 'Error saving project', 'error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }

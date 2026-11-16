@@ -52,10 +52,11 @@
 
       <section id="pane-projects" class="admin-pane active">
         <div class="admin-box">
-          <span class="mono-tag orange">NEW CAD MODEL</span>
-          <h3 style="font-size:1.35rem;font-weight:700;margin:8px 0 20px;">Upload Project to Archive</h3>
+          <span class="mono-tag orange" id="project-form-tag">NEW CAD MODEL</span>
+          <h3 id="project-form-heading" style="font-size:1.35rem;font-weight:700;margin:8px 0 20px;">Upload Project to Archive</h3>
 
           <form id="project-admin-form">
+            <input type="hidden" id="p-id">
             <div class="admin-form-two-col">
               <div>
                 <label class="field-label">Project Title</label>
@@ -102,7 +103,13 @@
                 <textarea id="p-desc" class="admin-field-textarea" rows="4" required placeholder="Describe kinematic joints, contact stress analysis, print orientation, and test data"></textarea>
               </div>
             </div>
-            <button type="submit" class="btn-green" style="margin-top:24px;">Register Project in Vault</button>
+            <p id="p-edit-hint" style="display:none;margin-top:16px;font-size:0.8rem;color:var(--text-dark-secondary);">
+              Leave the file fields empty to keep the current PDF and image.
+            </p>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+              <button type="submit" class="btn-green" id="p-submit-button">Register Project in Vault</button>
+              <button type="button" class="btn-dark-outline" id="p-cancel-button" style="display:none;">Cancel Edit</button>
+            </div>
           </form>
         </div>
 
