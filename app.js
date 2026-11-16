@@ -523,7 +523,7 @@ function initUploadModal() {
     }
 
     if (promptVal) {
-      promptVal.textContent = result.promptBonus ? 'Within 2 Hours Window' : 'Standard Window';
+      promptVal.textContent = result.promptBonus ? 'Among the first 3' : 'Not in the first 3';
     }
     if (promptBadge) {
       promptBadge.textContent = result.promptBonus ? '+10 PTS' : '+0 PTS';
