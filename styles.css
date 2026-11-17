@@ -1295,3 +1295,25 @@ button {
 a.is-disabled {
   pointer-events: none;
 }
+
+.submit-lock-note {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: #FFF4E5;
+  border-left: 3px solid var(--burnt-orange);
+  border-radius: 3px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text-light-secondary);
+}
+
+.submit-lock-note[hidden] {
+  display: none;
+}
+
+.submit-lock-note a {
+  color: var(--burnt-orange);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

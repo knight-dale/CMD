@@ -145,7 +145,6 @@ function setChallengeOpen(isOpen, hasBrief) {
   window.cmdChallengeOpen = isOpen;
 
   const dlBtn = document.getElementById('download-brief-btn');
-  const submitBtn = document.getElementById('submit-model-modal-btn');
 
   if (dlBtn) {
     const enabled = isOpen && hasBrief;
@@ -153,25 +152,27 @@ function setChallengeOpen(isOpen, hasBrief) {
     dlBtn.setAttribute('aria-disabled', String(!enabled));
     dlBtn.tabIndex = enabled ? 0 : -1;
   }
-  if (submitBtn) {
-    // Needs an active challenge AND the Problem 1 brief downloaded
-    const canSubmit = isOpen && hasDownloadedProblem1();
-    submitBtn.classList.toggle('is-disabled', !canSubmit);
-    submitBtn.disabled = !canSubmit;
-    submitBtn.title = canSubmit
-      ? ''
-      : (isOpen ? 'Download the Problem 1 brief (Leather Turning Drum) first' : '');
-  }
+
+  refreshSubmitButton();
 }
 
-// Re-evaluates the submit button after the download state changes
+// Submit needs an active challenge AND the Problem 1 brief downloaded.
+// Also shows or hides the explanation note.
 function refreshSubmitButton() {
   const submitBtn = document.getElementById('submit-model-modal-btn');
-  if (!submitBtn) return;
-  const canSubmit = window.cmdChallengeOpen === true && hasDownloadedProblem1();
-  submitBtn.classList.toggle('is-disabled', !canSubmit);
-  submitBtn.disabled = !canSubmit;
-  submitBtn.title = canSubmit ? '' : 'Download the Problem 1 brief (Leather Turning Drum) first';
+  const note = document.getElementById('submit-lock-note');
+
+  const isOpen = window.cmdChallengeOpen === true;
+  const downloaded = hasDownloadedProblem1();
+  const canSubmit = isOpen && downloaded;
+
+  if (submitBtn) {
+    submitBtn.classList.toggle('is-disabled', !canSubmit);
+    submitBtn.disabled = !canSubmit;
+  }
+
+  // Only explain when there IS an active challenge but the brief is missing
+  if (note) note.hidden = !(isOpen && !downloaded);
 }
 
 // Returns false if the date can't be read, so the countdown can stay hidden.
