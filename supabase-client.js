@@ -155,6 +155,8 @@ async function fetchCurrentChallenge() {
       .from('challenges')
       .select('*')
       .eq('is_active', true)
+      .order('start_date', { ascending: false })
+      .order('week_number', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) throw error;
