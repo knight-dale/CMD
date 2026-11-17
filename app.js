@@ -463,6 +463,20 @@ function initUploadModal() {
   let lastMass = null;
   let lastCog = null;
 
+  // Track Problem 1 PDF download
+  const downloadProblem1Btn = document.getElementById('download-problem1-btn');
+  if (downloadProblem1Btn) {
+    downloadProblem1Btn.addEventListener('click', () => {
+      localStorage.setItem('problem1_downloaded', 'true');
+      showToast('Problem 1 brief downloaded. You can now submit to the weekly challenge.', 'success');
+    });
+  }
+
+  // Check if user has downloaded Problem 1 PDF
+  function hasDownloadedProblem1() {
+    return localStorage.getItem('problem1_downloaded') === 'true';
+  }
+
   if (!modal) return;
 
   function resetModalState() {
@@ -693,10 +707,9 @@ function initUploadModal() {
 
       const name = user.user_metadata?.display_name || user.email.split('@')[0];
 
-      // Members must submit a design approach to the Engineering Problem before entering the weekly challenge
-      const hasProblemSubmission = await window.cmdSupabase.hasProblemSubmission(user.email);
-      if (!hasProblemSubmission) {
-        showToast('You must first submit a solution to the Engineering Problem (Leather Turning Drum) before entering the weekly challenge.', 'error');
+      // Members must download the Problem 1 PDF before entering the weekly challenge
+      if (!hasDownloadedProblem1()) {
+        showToast('You must first download the Problem 1 brief (Leather Turning Drum) before entering the weekly challenge.', 'error');
         setTimeout(() => {
           document.getElementById('problems')?.scrollIntoView({ behavior: 'smooth' });
         }, 1000);
