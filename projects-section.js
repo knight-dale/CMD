@@ -1,5 +1,5 @@
 /*
-  projects-section.js
+  projects-section.js  (v2: labelled drawing button)
   Renders projects uploaded in the admin console into the homepage "Selected work" grid.
   Shows the newest 3 first; a button reveals the rest.
 
@@ -57,6 +57,21 @@
     const tools = toList(project.tools).slice(0, 4);
     const extraClass = index >= INITIAL_COUNT ? ' is-extra' : '';
 
+    const toolsHtml = tools.length
+      ? `<div class="project-card-tools">${tools.map(t => `<span>${esc(t)}</span>`).join('')}</div>`
+      : '';
+
+    const drawingHtml = pdf
+      ? `<a class="project-card-drawing" href="${esc(pdf)}" target="_blank" rel="noopener" aria-label="Open drawing sheet PDF for ${title}">
+           <span>View drawing (PDF)</span>
+           <span class="project-card-drawing-arrow" aria-hidden="true">&nearr;</span>
+         </a>`
+      : '';
+
+    const footerHtml = (toolsHtml || drawingHtml)
+      ? `<div class="project-card-footer">${toolsHtml}${drawingHtml}</div>`
+      : '';
+
     return `
       <article class="project-editorial-card${extraClass}">
         <div class="project-card-image-wrap${img ? '' : ' is-empty'}" data-label="${esc(category || 'Project')}">
@@ -65,11 +80,10 @@
         <div class="project-card-meta">${meta}</div>
         <div class="project-card-title-row">
           <h3 class="project-card-title">${title}</h3>
-          ${pdf ? `<a class="project-card-link" href="${esc(pdf)}" target="_blank" rel="noopener" aria-label="Open drawing sheet for ${title}">&nearr;</a>` : ''}
         </div>
         <p class="project-card-desc">${esc(project.description)}</p>
         ${specs.length ? `<ul class="project-card-specs">${specs.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-        ${tools.length ? `<div class="project-card-tools">${tools.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+        ${footerHtml}
       </article>
     `;
   }

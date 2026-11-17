@@ -1,6 +1,6 @@
-/* projects-section.css
-   Extends the existing .project-editorial-card styles in styles.css.
-   Uses the site's existing tokens (--font-mono, --text-light-secondary, --transition). */
+/* projects-section.css  (v2)
+   Extends the existing styles in styles.css.
+   Uses the site's existing tokens (--font-mono, --text-light-primary, --text-light-secondary, --transition). */
 
 #projects {
   scroll-margin-top: 76px; /* clears the sticky nav when jumping to the section */
@@ -38,7 +38,7 @@
 }
 
 .projects-toggle-row .btn-black:focus-visible,
-.project-card-link:focus-visible {
+.project-card-drawing:focus-visible {
   outline: 2px solid var(--text-light-primary);
   outline-offset: 3px;
 }
@@ -52,18 +52,6 @@
   overflow: hidden;
 }
 
-.project-card-link {
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
-  padding: 4px;
-  transition: opacity var(--transition);
-}
-
-.project-card-link:hover {
-  opacity: 0.6;
-}
-
 .project-card-specs {
   list-style: none;
   display: flex;
@@ -73,6 +61,44 @@
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--text-light-secondary);
+}
+
+/* Tools and the drawing button sit at the bottom of every card, so the buttons line up across a row */
+.project-card-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.project-card-footer .project-card-tools {
+  margin-top: 0;
+}
+
+/* Drawing sheet button: full width, labelled, 44px tall for easy tapping */
+.project-card-drawing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--text-light-primary);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-light-primary);
+  transition: background var(--transition), color var(--transition);
+}
+
+.project-card-drawing:hover {
+  background: var(--text-light-primary);
+  color: #FFFFFF;
+}
+
+.project-card-drawing-arrow {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 /* Shown when a project has no image, or the image URL fails to load */
@@ -89,4 +115,16 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-light-secondary);
+}
+
+/* ---------- Challenge card: disabled buttons ----------
+   Replaces the inline styles that set white text (--text-dark-primary) on a light grey button. */
+.btn-green.is-disabled,
+.btn-black.is-disabled {
+  background: var(--bg-light-muted);
+  color: var(--text-light-secondary);
+  border: 1px solid var(--border-light);
+  pointer-events: none;
+  cursor: not-allowed;
+  transform: none;
 }

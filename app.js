@@ -134,33 +134,49 @@ async function initAuthState() {
   }
 }
 
+let countdownTimer = null;
+
+// Enables or disables the two challenge buttons. Also remembers the state for the nav-menu link.
+function setChallengeOpen(isOpen, hasBrief) {
+  window.cmdChallengeOpen = isOpen;
+
+  const dlBtn = document.getElementById('download-brief-btn');
+  const submitBtn = document.getElementById('submit-model-modal-btn');
+
+  if (dlBtn) {
+    const enabled = isOpen && hasBrief;
+    dlBtn.classList.toggle('is-disabled', !enabled);
+    dlBtn.setAttribute('aria-disabled', String(!enabled));
+    dlBtn.tabIndex = enabled ? 0 : -1;
+  }
+  if (submitBtn) {
+    submitBtn.classList.toggle('is-disabled', !isOpen);
+    submitBtn.disabled = !isOpen;
+  }
+}
+
+// Returns false if the date can't be read, so the countdown can stay hidden.
 function startCountdown(targetDateString) {
-  const targetTime = targetDateString
-    ? new Date(targetDateString).getTime()
-    : Date.now() + (4 * 24 * 60 * 60 * 1000) + (16 * 60 * 60 * 1000);
+  const targetTime = new Date(targetDateString).getTime();
+  if (isNaN(targetTime)) return false;
+  if (countdownTimer) clearInterval(countdownTimer);
+
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value).padStart(2, '0');
+  };
 
   function update() {
-    const now = Date.now();
-    const diff = Math.max(0, targetTime - now);
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const secs = Math.floor((diff % (1000 * 60)) / 1000);
-
-    const dEl = document.getElementById('cd-days');
-    const hEl = document.getElementById('cd-hours');
-    const mEl = document.getElementById('cd-mins');
-    const sEl = document.getElementById('cd-secs');
-
-    if (dEl) dEl.textContent = String(days).padStart(2, '0');
-    if (hEl) hEl.textContent = String(hours).padStart(2, '0');
-    if (mEl) mEl.textContent = String(mins).padStart(2, '0');
-    if (sEl) sEl.textContent = String(secs).padStart(2, '0');
+    const diff = Math.max(0, targetTime - Date.now());
+    set('cd-days', Math.floor(diff / 86400000));
+    set('cd-hours', Math.floor((diff % 86400000) / 3600000));
+    set('cd-mins', Math.floor((diff % 3600000) / 60000));
+    set('cd-secs', Math.floor((diff % 60000) / 1000));
   }
 
   update();
-  setInterval(update, 1000);
+  countdownTimer = setInterval(update, 1000);
+  return true;
 }
 
 async function loadActiveChallenge() {
@@ -169,22 +185,43 @@ async function loadActiveChallenge() {
     challenge = await window.cmdSupabase.fetchCurrentChallenge();
   }
 
-  const weekLbl = document.getElementById('challenge-week-label');
-  const titleEl = document.getElementById('challenge-title');
-  const descEl = document.getElementById('challenge-desc');
-  const dlBtn = document.getElementById('download-brief-btn');
+  const byId = id => document.getElementById(id);
+  const weekLbl = byId('challenge-week-label');
+  const badge = byId('challenge-status-badge');
+  const titleEl = byId('challenge-title');
+  const descEl = byId('challenge-desc');
+  const countdown = byId('challenge-countdown');
+  const emptyNote = byId('challenge-empty-note');
+  const dlBtn = byId('download-brief-btn');
 
-  if (challenge) {
-    if (weekLbl) weekLbl.textContent = `WEEK ${challenge.week_number} CHALLENGE`;
-    if (titleEl) titleEl.textContent = challenge.title;
-    if (descEl) descEl.textContent = challenge.description;
-    if (dlBtn && challenge.brief_pdf_url) {
-      dlBtn.href = challenge.brief_pdf_url;
-    }
-    startCountdown(challenge.end_date);
-  } else {
-    startCountdown(null);
+  // No active challenge: show the "coming soon" state and keep both buttons off.
+  if (!challenge) {
+    if (weekLbl) weekLbl.textContent = 'NO ACTIVE CHALLENGE';
+    if (badge) badge.textContent = 'NEXT CHALLENGE NOT YET UPLOADED';
+    if (titleEl) titleEl.textContent = 'Next Challenge Coming Soon';
+    if (descEl) descEl.textContent = 'The next weekly design challenge will be posted by the admin team. Check back soon for a new brief, specifications, and submission details.';
+    if (countdown) countdown.style.display = 'none';
+    if (emptyNote) emptyNote.style.display = 'block';
+    setChallengeOpen(false, false);
+    return;
   }
+
+  // Active challenge. Entries stay open after the deadline because late entries are scored with a penalty.
+  const briefUrl = /^https?:\/\//i.test(challenge.brief_pdf_url || '') ? challenge.brief_pdf_url : '';
+  const deadline = new Date(challenge.end_date).getTime();
+  const pastDeadline = !isNaN(deadline) && deadline <= Date.now();
+
+  if (weekLbl) weekLbl.textContent = `WEEK ${challenge.week_number} CHALLENGE`;
+  if (badge) badge.textContent = pastDeadline ? 'PAST DEADLINE (LATE PENALTY APPLIES)' : 'ACTIVE BRIEF';
+  if (titleEl) titleEl.textContent = challenge.title;
+  if (descEl) descEl.textContent = challenge.description;
+  if (emptyNote) emptyNote.style.display = 'none';
+  if (dlBtn && briefUrl) dlBtn.href = briefUrl;
+
+  const hasTimer = startCountdown(challenge.end_date);
+  if (countdown) countdown.style.display = hasTimer ? 'flex' : 'none';
+
+  setChallengeOpen(true, Boolean(briefUrl));
 }
 
 function escapeHtml(s) {
@@ -433,7 +470,7 @@ function initUploadModal() {
     if (resultsView) resultsView.style.display = 'none';
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Upload Model for Evaluation \u2192';
+      submitBtn.textContent = 'Submit for Evaluation \u2192';
       submitBtn.style.background = '';
       submitBtn.style.color = '';
     }
@@ -442,7 +479,7 @@ function initUploadModal() {
     lastCog = null;
   }
 
-    let submissionToken = 0;
+  let submissionToken = 0;
 
   function setResultsHeader(tagText, bg, color, message) {
     const tag = resultsView.querySelector('.mono-tag');
@@ -490,7 +527,7 @@ function initUploadModal() {
     const roundPts = document.getElementById('res-round-points');
     const totalPts = document.getElementById('res-total-points');
 
-    if (massVal) massVal.textContent = mass != null ? `${mass} kg` : 'N/A';
+    if (massVal) massVal.textContent = mass != null ? `${mass} g` : 'N/A';
     if (massBadge) {
       if (result.massTier === 'EXACT' || result.massPoints === 30) {
         massBadge.textContent = 'EXACT (+30 PTS)';
@@ -578,6 +615,10 @@ function initUploadModal() {
   openBtns.forEach(btn => {
     if (btn) {
       btn.addEventListener('click', async () => {
+        if (window.cmdChallengeOpen === false) {
+          showToast('There is no active challenge to submit to right now.', 'info');
+          return;
+        }
         if (!window.cmdSupabase) {
           showToast('Connection unconfigured', 'error');
           return;
@@ -634,7 +675,7 @@ function initUploadModal() {
     });
   }
 
-    if (form) {
+  if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!window.cmdSupabase) return;
@@ -651,8 +692,9 @@ function initUploadModal() {
       }
 
       const name = user.user_metadata?.display_name || user.email.split('@')[0];
-// Check if user has submitted a problem solution first
-      const hasProblemSubmission = await checkProblemSubmission(user.email);
+
+      // Members must submit a design approach to the Engineering Problem before entering the weekly challenge
+      const hasProblemSubmission = await window.cmdSupabase.hasProblemSubmission(user.email);
       if (!hasProblemSubmission) {
         showToast('You must first submit a solution to the Engineering Problem (Leather Turning Drum) before entering the weekly challenge.', 'error');
         setTimeout(() => {
@@ -695,38 +737,14 @@ function initUploadModal() {
       });
     });
   }
+}
+
 function openImageModal(src) {
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:10000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
   modal.innerHTML = '<img src="' + src + '" style="max-width:90%;max-height:90%;object-fit:contain;" alt="Full size image">';
   modal.onclick = () => modal.remove();
   document.body.appendChild(modal);
-}
-
-async function checkProblemSubmission(userEmail) {
-  const client = window.cmdSupabase?.getClient();
-  if (!client) return false;
-  
-  try {
-    const { data, error } = await client.from('challenge_submissions')
-      .select('*')
-      .eq('member_email', userEmail.toLowerCase().trim())
-      .maybeSingle();
-    
-    if (error) return false;
-    
-    // Check if user has an active submission (any status)
-    if (data) {
-      // User has submitted before - allow them to proceed
-      return true;
-    }
-    
-    // No submission found - block and show message
-    return false;
-  } catch (err) {
-    console.error('Error checking problem submission:', err);
-    return false;
-  }
 }
 
 function initDesignApproachModal() {
@@ -751,7 +769,7 @@ function initDesignApproachModal() {
   if (openBtn) {
     openBtn.addEventListener('click', async () => {
       if (!window.cmdSupabase) return;
-      
+
       const user = await window.cmdSupabase.getCurrentUser();
       if (!user) {
         showToast('Please sign in to submit a design approach.', 'error');
@@ -793,7 +811,7 @@ function initDesignApproachModal() {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const approachTitle = document.getElementById('approach-title').value.trim();
       const approachDescription = document.getElementById('approach-description').value.trim();
       const pdfFile = document.getElementById('approach-pdf-file').files[0];
@@ -813,7 +831,7 @@ function initDesignApproachModal() {
       try {
         // For now, using a placeholder problem ID. In the future, this would be dynamically determined
         const problemId = '00000000-0000-0000-0000-000000000001'; // UUID placeholder for Problem 1
-        
+
         await window.cmdSupabase.submitProblemSubmission(
           problemId,
           approachTitle,
@@ -823,18 +841,18 @@ function initDesignApproachModal() {
         );
 
         showToast('Design approach submitted successfully!', 'success');
-        
+
         // Show success view
         if (formView) formView.style.display = 'none';
         if (successView) successView.style.display = 'block';
-        
+
       } catch (err) {
         console.error('Error submitting design approach:', err);
         showToast(err.message || 'Failed to submit design approach. Please try again.', 'error');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Submit Design Approach →';
+          submitBtn.textContent = 'Submit Design Approach \u2192';
         }
       }
     });
@@ -863,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.cmdSupabase && window.cmdSupabase.initSupabase) {
     window.cmdSupabase.initSupabase();
   }
-  
+
   loadSiteMedia();
   initNavigation();
   initAuthState();
@@ -889,4 +907,4 @@ document.addEventListener('DOMContentLoaded', () => {
     lastY = curY;
   }
   window.addEventListener('scroll', handleNavScroll);
-});}
+});

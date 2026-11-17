@@ -27,6 +27,7 @@ function initAdminNavigation() {
     'pane-projects': 'Projects Vault',
     'pane-challenges': 'Weekly Competitions',
     'pane-submissions': 'Member Submissions',
+    'pane-problem-submissions': 'Problem Submissions',
     'pane-members': 'Registered Club Members',
     'pane-leaderboard': 'Edit Leaderboard',
     'pane-suggestions': 'Community Polls',
@@ -37,6 +38,7 @@ function initAdminNavigation() {
     'pane-projects': 'SYSTEM ARCHIVE',
     'pane-challenges': 'COMPETITION PIPELINE',
     'pane-submissions': 'STUDENT WORK',
+    'pane-problem-submissions': 'ENGINEERING PROBLEMS',
     'pane-members': 'MEMBER DIRECTORY',
     'pane-leaderboard': 'STANDINGS MANAGEMENT',
     'pane-suggestions': 'COMMUNITY VOTES',
@@ -57,6 +59,7 @@ function initAdminNavigation() {
       if (heading) heading.textContent = titles[targetPaneId] || 'Console';
       if (catTag) catTag.textContent = categories[targetPaneId] || 'MANAGEMENT';
       if (targetPaneId === 'pane-members') renderMembersList();
+      if (targetPaneId === 'pane-problem-submissions') renderProblemSubmissions();
     });
   });
 }
@@ -68,6 +71,12 @@ function escapeHtml(s) {
 
 function listToText(value) {
   return Array.isArray(value) ? value.join(', ') : (value || '');
+}
+
+function safeHref(value) {
+  if (typeof value !== 'string') return '';
+  const u = value.trim();
+  return /^https?:\/\//i.test(u) ? u : '';
 }
 
 // Select a value even if the saved project uses a category/stage that is no longer in the dropdown.
@@ -367,7 +376,7 @@ async function renderSubmissionsList() {
   }
 
   if (!subs || subs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
     return;
   }
 
@@ -375,7 +384,6 @@ async function renderSubmissionsList() {
   subs.forEach(s => {
     const tr = document.createElement('tr');
     const dateStr = s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent';
-    const isCleanUrl = s.pdf_url && typeof s.pdf_url === 'string' && s.pdf_url !== '#' && !s.pdf_url.startsWith('file:') && !s.pdf_url.startsWith('C:') && !s.pdf_url.startsWith('D:');
     const massOk = s.mass_correct ? 'YES' : 'NO';
     const cogOk = s.cog_correct ? 'YES' : 'NO';
     const hasNewCog = s.submitted_cog_x != null && s.submitted_cog_y != null && s.submitted_cog_z != null;
@@ -393,15 +401,100 @@ async function renderSubmissionsList() {
       <td style="font-weight:700;">${s.member_name}</td>
       <td style="font-size:0.8rem;color:var(--text-dark-secondary);">${s.member_email}</td>
       <td>${s.model_title}</td>
-      <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? s.submitted_mass + ' kg' : 'N/A'}</td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? s.submitted_mass + ' g' : 'N/A'}</td>
       <td style="${massStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? massOk : 'N/A'}</td>
       <td style="font-family:var(--font-mono);font-size:0.85rem;">${cogText}</td>
       <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${hasAnyCog ? cogOk : 'N/A'}</td>
       <td style="${promptStyle}font-family:var(--font-mono);font-size:0.85rem;">${promptBonusText}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
-      
       <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${s.notes || 'None'}</td>
     `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function renderProblemSubmissions() {
+  const tbody = document.getElementById('problem-submissions-tbody');
+  if (!tbody) return;
+
+  let rows = [];
+  if (window.cmdSupabase && window.cmdSupabase.fetchProblemSubmissions) {
+    rows = await window.cmdSupabase.fetchProblemSubmissions();
+  }
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No design approaches submitted yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recent';
+
+    const pdf = safeHref(r.pdf_url);
+    const images = (Array.isArray(r.images) ? r.images : []).map(safeHref).filter(Boolean);
+    const fileLinks = [
+      pdf ? `<a href="${escapeHtml(pdf)}" target="_blank" rel="noopener" class="btn-sm-action">PDF</a>` : '',
+      ...images.map((u, i) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener" class="btn-sm-action">Image ${i + 1}</a>`)
+    ].filter(Boolean);
+    const filesHtml = fileLinks.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${fileLinks.join('')}</div>`
+      : `<span style="color:var(--text-dark-secondary);font-size:0.8rem;">None</span>`;
+
+    const statusHtml = r.is_approved
+      ? `<span class="mono-tag" style="color:var(--neon-green);">APPROVED</span>`
+      : `<span class="mono-tag muted-dark">PENDING</span>`;
+
+    tr.innerHTML = `
+      <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${escapeHtml(dateStr)}</td>
+      <td>
+        <div style="font-weight:700;">${escapeHtml(r.member_name)}</div>
+        <div style="font-size:0.75rem;color:var(--text-dark-secondary);">${escapeHtml(r.member_email)}</div>
+      </td>
+      <td style="max-width:360px;">
+        <div style="font-weight:700;">${escapeHtml(r.approach_title)}</div>
+        <details style="margin-top:4px;">
+          <summary style="cursor:pointer;font-size:0.8rem;color:var(--text-dark-secondary);">Read description</summary>
+          <p style="margin-top:6px;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${escapeHtml(r.approach_description)}</p>
+        </details>
+      </td>
+      <td>${filesHtml}</td>
+      <td style="font-family:var(--font-mono);font-weight:700;">${r.votes || 0}</td>
+      <td>${statusHtml}</td>
+      <td style="text-align:right;">
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button type="button" class="btn-sm-action btn-toggle-approval">${r.is_approved ? 'Unapprove' : 'Approve'}</button>
+          <button type="button" class="btn-sm-danger btn-delete-approach">Delete</button>
+        </div>
+      </td>
+    `;
+
+    tr.querySelector('.btn-toggle-approval').addEventListener('click', async () => {
+      const approve = !r.is_approved;
+      try {
+        await window.cmdSupabase.updateProblemSubmission(r.id, {
+          is_approved: approve,
+          status: approve ? 'approved' : 'pending'
+        });
+        showToast(approve ? 'Approach approved' : 'Approval removed', 'success');
+        renderProblemSubmissions();
+      } catch (err) {
+        showToast(err.message || 'Error updating submission', 'error');
+      }
+    });
+
+    tr.querySelector('.btn-delete-approach').addEventListener('click', async () => {
+      if (!confirm('Delete this design approach submission?')) return;
+      try {
+        await window.cmdSupabase.deleteProblemSubmission(r.id);
+        showToast('Submission removed', 'success');
+        renderProblemSubmissions();
+      } catch (err) {
+        showToast(err.message || 'Error deleting submission', 'error');
+      }
+    });
+
     tbody.appendChild(tr);
   });
 }
@@ -826,6 +919,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initChallengePublishForm();
   renderChallengesList();
   renderSubmissionsList();
+  renderProblemSubmissions();
   renderMembersList();
   initMembersSearch();
   initLeaderboardEditorForm();
@@ -837,6 +931,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (reloadSubBtn) {
     reloadSubBtn.addEventListener('click', () => {
       renderSubmissionsList();
+      showToast('Submissions refreshed', 'info');
+    });
+  }
+
+  const reloadProblemsBtn = document.getElementById('reload-problem-submissions-button');
+  if (reloadProblemsBtn) {
+    reloadProblemsBtn.addEventListener('click', () => {
+      renderProblemSubmissions();
       showToast('Submissions refreshed', 'info');
     });
   }

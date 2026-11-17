@@ -447,12 +447,15 @@ async function submitChallengeEntryWithScoring(entryData) {
     ? backendResult.pointsAwarded
     : (massPoints + cogPoints + (promptBonus ? 10 : 0));
   const totalPoints = backendResult.totalPoints !== undefined ? backendResult.totalPoints : pointsAwarded;
+  const latePenalty = Number(backendResult.latePenalty) || 0;
+  const earlyBirdBonus = Number(backendResult.earlyBirdBonus) || 0;
 
   return {
     massCorrect: massTier !== 'OFF',
     cogCorrect: cogTier !== 'OFF',
     massTier, cogTier, massPoints, cogPoints,
-    promptBonus, pointsAwarded, totalPoints
+    promptBonus, pointsAwarded, totalPoints,
+    latePenalty, earlyBirdBonus
   };
 }
 async function addProject(projectData) {
@@ -715,6 +718,45 @@ async function fetchProblemSubmissions(problemId) {
   }
 }
 
+// True if this member has submitted at least one design approach (pending or approved).
+async function hasProblemSubmission(email) {
+  const client = getClient();
+  if (!client || !email) return false;
+  const { data, error } = await client
+    .from('problem_submissions')
+    .select('id')
+    .eq('member_email', email)
+    .limit(1);
+  if (error) {
+    console.error('Problem submission check failed:', error);
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function updateProblemSubmission(id, fields) {
+  const client = getClient();
+  if (!client) throw new Error('Supabase client unconfigured.');
+  const { data, error } = await client.from('problem_submissions').update(fields).eq('id', id).select();
+  if (error) throw error;
+  // A row-level security policy that blocks the update returns no error and zero rows.
+  if (!data || data.length === 0) {
+    throw new Error('No changes were saved. The table may not allow admin updates (see RLS policy).');
+  }
+  return data;
+}
+
+async function deleteProblemSubmission(id) {
+  const client = getClient();
+  if (!client) throw new Error('Supabase client unconfigured.');
+  const { data, error } = await client.from('problem_submissions').delete().eq('id', id).select();
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('Nothing was deleted. The table may not allow admin deletes (see RLS policy).');
+  }
+  return true;
+}
+
 window.cmdSupabase = {
   initSupabase,
   getCurrentUser,
@@ -754,5 +796,8 @@ window.cmdSupabase = {
   resetSiteMediaSlot,
   isAdmin,
   submitProblemSubmission,
-  fetchProblemSubmissions
+  fetchProblemSubmissions,
+  hasProblemSubmission,
+  updateProblemSubmission,
+  deleteProblemSubmission
 };

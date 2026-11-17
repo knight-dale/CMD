@@ -247,7 +247,38 @@
                 </tr>
               </thead>
               <tbody id="submissions-table-body">
-                <tr><td colspan="12" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
+                <tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="pane-problem-submissions" class="admin-pane">
+        <div class="admin-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+            <div>
+              <span class="mono-tag orange">ENGINEERING PROBLEMS</span>
+              <h3 style="font-size:1.25rem;font-weight:700;margin:4px 0 0;">Design Approach Submissions</h3>
+            </div>
+            <button type="button" class="btn-dark-outline" id="reload-problem-submissions-button" style="font-size:0.75rem;padding:8px 14px;">Refresh Submissions</button>
+          </div>
+
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Member</th>
+                  <th>Approach</th>
+                  <th>Files</th>
+                  <th>Votes</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="problem-submissions-tbody">
+                <tr><td colspan="7" style="text-align:center;color:var(--text-dark-secondary);">Loading design approaches...</td></tr>
               </tbody>
             </table>
           </div>

@@ -49,7 +49,7 @@
               <div class="dropdown-user-email" id="dropdown-email">designer@students.dkut.ac.ke</div>
             </div>
             <a href="admin.html" class="dropdown-link" id="nav-admin-link" style="display:none;">Admin Console &nearr;</a>
-            <button type="button" class="dropdown-link" id="open-submit-modal-link">Upload Model PDF</button>
+            <button type="button" class="dropdown-link" id="open-submit-modal-link">Submit Challenge Entry</button>
             <button type="button" class="dropdown-link logout" id="logout-button">Sign Out</button>
           </div>
         </div>
@@ -287,28 +287,47 @@
 
       <div class="challenge-row-grid">
         <div class="challenge-card-light" id="challenge-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <span class="mono-tag orange" id="challenge-week-label">NO ACTIVE CHALLENGE</span>
-            <span class="badge-tag" style="background:#E5E4DE;color:var(--text-dark-primary);">NEXT CHALLENGE NOT YET UPLOADED</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <span class="mono-tag orange" id="challenge-week-label">WEEKLY CHALLENGE</span>
+            <span class="badge-tag" id="challenge-status-badge">LOADING</span>
           </div>
 
           <h3 style="font-size:1.85rem;font-weight:700;letter-spacing:-0.02em;margin:16px 0 12px;" id="challenge-title">
-            Next Challenge Coming Soon
+            Loading challenge&hellip;
           </h3>
-          <p style="color:var(--text-light-secondary);line-height:1.65;font-size:0.95rem;" id="challenge-desc">
-            The current challenge has expired. The next weekly design challenge will be posted by the admin team. Check back soon for a new brief, specifications, and submission details.
-          </p>
+          <p style="color:var(--text-light-secondary);line-height:1.65;font-size:0.95rem;" id="challenge-desc"></p>
 
-          <div style="margin-top:24px;padding:20px;background:#F0F2F5;border-radius:4px;text-align:center;">
+          <div class="countdown-flex" id="challenge-countdown" style="display:none;">
+            <div class="cd-box">
+              <div class="cd-val" id="cd-days">00</div>
+              <div class="cd-lbl">Days</div>
+            </div>
+            <div class="cd-box">
+              <div class="cd-val" id="cd-hours">00</div>
+              <div class="cd-lbl">Hours</div>
+            </div>
+            <div class="cd-box">
+              <div class="cd-val" id="cd-mins">00</div>
+              <div class="cd-lbl">Mins</div>
+            </div>
+            <div class="cd-box">
+              <div class="cd-val" id="cd-secs">00</div>
+              <div class="cd-lbl">Secs</div>
+            </div>
+          </div>
+
+          <div id="challenge-empty-note" style="display:none;margin-top:24px;padding:20px;background:#F0F2F5;border-radius:4px;text-align:center;">
             <span class="mono-tag muted-light" style="margin-bottom:8px;display:inline-block;">CHECK BACK</span>
             <p style="font-size:0.9rem;color:var(--text-light-secondary);margin:0;">
               New challenges are typically posted on Mondays. Follow our community for announcements.
             </p>
           </div>
 
-          <div style="display:flex;gap:12px;margin-top:auto;flex-wrap:wrap;">
-            <a href="#" target="_blank" class="btn-green" id="download-brief-btn" style="flex:1;min-width:160px;background:#E5E4DE;color:var(--text-dark-primary);border:1px solid var(--border-light);pointer-events:none;">Download PDF Brief &nearr;</a>
-            <button type="button" class="btn-black" id="submit-model-modal-btn" style="flex:1;min-width:160px;background:#E5E4DE;color:var(--text-dark-primary);border:1px solid var(--border-light);pointer-events:none;">Upload Your Model PDF &rarr;</button>
+          <div style="display:flex;gap:12px;margin-top:auto;padding-top:24px;flex-wrap:wrap;">
+            <a href="#" target="_blank" rel="noopener" class="btn-green is-disabled" id="download-brief-btn"
+               aria-disabled="true" tabindex="-1" style="flex:1;min-width:160px;">Download PDF Brief &nearr;</a>
+            <button type="button" class="btn-black is-disabled" id="submit-model-modal-btn" disabled
+                    style="flex:1;min-width:160px;">Submit Your Model &rarr;</button>
           </div>
         </div>
 
@@ -438,7 +457,7 @@
     <div class="container">
       <div class="section-header-row">
         <div>
-          <span class="mono-tag muted-light">06 / KIMATHI STANDINGS</span>
+          <span class="mono-tag muted-light">07 / KIMATHI STANDINGS</span>
           <h2 class="section-header-title">Club Leaderboard</h2>
         </div>
       </div>
@@ -468,7 +487,7 @@
     <div class="container">
       <div class="section-header-row">
         <div>
-          <span class="mono-tag muted-light">07 / THE PEOPLE</span>
+          <span class="mono-tag muted-light">08 / THE PEOPLE</span>
           <h2 class="section-header-title">Find us.</h2>
         </div>
       </div>
@@ -552,7 +571,7 @@
         <span class="mono-tag orange">CAD SUBMISSION</span>
         <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Model Evaluation</h3>
         <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
-          Provide your measured mass, centre of mass, and CAD drawing sheet PDF for competition scoring.
+          Provide your measured mass and centre of mass for competition scoring.
         </p>
 
         <div style="background:#F0F2F5;padding:10px 14px;border-radius:4px;margin-bottom:16px;font-size:0.82rem;color:var(--text-light-secondary);">
@@ -573,7 +592,7 @@
               <input type="number" id="entry-cog-z" step="0.001" placeholder="Z" required>
             </div>
           </div>
-          
+
           <button type="submit" class="btn-black" id="entry-submit-btn" style="width:100%;margin-top:6px;">Submit for Evaluation &rarr;</button>
         </form>
       </div>
@@ -650,7 +669,7 @@
     <div class="modal-dialog-card">
       <button type="button" class="modal-close-btn" id="design-approach-close-button" aria-label="Close modal">&times;</button>
       <div id="design-approach-form-view">
-        <span class="mono-tag blue">DESIGN APPROACH</span>
+        <span class="mono-tag orange">DESIGN APPROACH</span>
         <h3 style="font-size:1.45rem;font-weight:700;margin:8px 0 6px;">Submit Design Approach</h3>
         <p style="font-size:0.85rem;color:var(--text-light-secondary);margin-bottom:16px;">
           Submit your design approach for the Leather Turning Drum problem. Upload sketches, analysis, or CAD concepts for community review.
@@ -666,7 +685,7 @@
             <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Approach Title</label>
             <input type="text" id="approach-title" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;" placeholder="e.g. Innovative Sealing Mechanism for Leather Drum" required>
           </div>
-          
+
           <div>
             <label style="font-family:var(--font-mono);font-size:0.68rem;text-transform:uppercase;color:var(--text-light-secondary);display:block;margin-bottom:4px;">Design Description</label>
             <textarea id="approach-description" rows="5" style="width:100%;padding:10px 12px;background:var(--bg-light);border:1px solid var(--border-light);border-radius:4px;font-family:inherit;font-size:0.9rem;resize:vertical;" placeholder="Describe your design approach, key innovations, and how it addresses the four failure modes (leakage, corrosion, loading/off-loading, motor torque)..." required></textarea>
