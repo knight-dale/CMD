@@ -756,6 +756,7 @@ function initUploadModal() {
 
       // Background: scoring only (no PDF upload needed)
       window.cmdSupabase.submitChallengeEntryWithScoring({
+        challenge_id: challenge ? challenge.id : undefined,
         member_name: name,
         member_email: user.email,
         model_title: 'CAD Competition Submission',

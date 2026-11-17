@@ -9,9 +9,85 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="admin.css">
+  <style>
+    /* Security Gate: Zero-trust default hidden until authorization confirmed */
+    html:not(.admin-authorized) body {
+      background: #0E1012 !important;
+      overflow: hidden !important;
+      margin: 0;
+      padding: 0;
+    }
+    html:not(.admin-authorized) .admin-container {
+      display: none !important;
+    }
+    #admin-security-guard {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #0E1012;
+      z-index: 9999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      padding: 24px;
+    }
+    html.admin-authorized #admin-security-guard {
+      display: none !important;
+    }
+    .security-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 255, 255, 0.08);
+      border-top-color: var(--neon-green, #22EE60);
+      border-radius: 50%;
+      animation: sec-spin 0.75s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes sec-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    (function() {
+      // Immediate synchronous check: in incognito or unauthenticated sessions, no token exists.
+      // Redirect immediately with location.replace before any body HTML is parsed or painted!
+      var hasToken = false;
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && (k.indexOf('sb-') === 0 || k.indexOf('supabase.auth') !== -1) && k.indexOf('-auth-token') !== -1) {
+            var raw = localStorage.getItem(k);
+            if (raw && raw.length > 20) {
+              var s = JSON.parse(raw);
+              if (s && (s.access_token || s.currentSession || s.user)) {
+                hasToken = true;
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {}
+
+      if (!hasToken) {
+        window.location.replace('auth.html');
+      }
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+  <div id="admin-security-guard">
+    <div class="security-spinner"></div>
+    <span class="mono-tag orange" style="font-size:0.7rem;margin-bottom:8px;">CMD SECURITY GATE</span>
+    <div style="font-size:0.88rem;color:#AAA;">Authenticating executive credentials...</div>
+  </div>
+
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <div class="admin-container">
@@ -224,32 +300,39 @@
       </section>
 
       <section id="pane-submissions" class="admin-pane">
-        <div class="admin-box">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <h3 style="font-size:1.25rem;font-weight:700;">Student CAD Model Submissions</h3>
+        <div class="admin-box" style="margin-bottom:24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:16px;">
+            <div>
+              <span class="mono-tag orange">WEEKLY CAD COMPETITIONS</span>
+              <h3 style="font-size:1.25rem;font-weight:700;margin:4px 0 0;">Student CAD Model Submissions</h3>
+              <p style="font-size:0.85rem;color:var(--text-dark-secondary);margin:4px 0 0;">Submissions arranged and categorized by competition challenge brief.</p>
+            </div>
             <button type="button" class="btn-dark-outline" id="reload-submissions-button" style="font-size:0.75rem;padding:8px 14px;">Refresh Submissions</button>
           </div>
-          <div class="admin-table-container">
-            <table class="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Member Name</th>
-                  <th>Email</th>
-                  <th>Model Title</th>
-                  <th>Mass (g)</th>
-                  <th>Mass OK</th>
-                  <th>Centre of Mass (mm)</th>
-                  <th>Centre of Mass OK</th>
-                  <th>Prompt (2hr)</th>
-                  <th>Pts</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody id="submissions-table-body">
-                <tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);">Loading submitted models...</td></tr>
-              </tbody>
-            </table>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:16px;background:#101214;border:1px solid var(--border-dark);border-radius:4px;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1;">
+              <div style="min-width:240px;flex:1;max-width:380px;">
+                <label class="field-label" style="font-size:0.7rem;margin-bottom:4px;display:block;">Filter By Challenge</label>
+                <select id="submissions-challenge-filter" class="admin-field-select" style="padding:8px 12px;font-size:0.85rem;">
+                  <option value="all">All Challenges (Arranged by Challenge)</option>
+                </select>
+              </div>
+              <div style="min-width:220px;flex:1;max-width:340px;">
+                <label class="field-label" style="font-size:0.7rem;margin-bottom:4px;display:block;">Search Submissions</label>
+                <input type="text" id="submissions-search-input" class="admin-field-input" placeholder="Search member, email, model..." style="padding:8px 12px;font-size:0.85rem;">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="mono-tag" id="submissions-total-badge" style="font-size:0.72rem;background:rgba(255,255,255,0.06);color:#FFF;">TOTAL: 0</span>
+              <span class="mono-tag" id="submissions-active-badge" style="font-size:0.72rem;background:rgba(34,238,96,0.1);color:var(--neon-green);border:1px solid rgba(34,238,96,0.25);">ACTIVE BRIEF: 0</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="submissions-grouped-container">
+          <div class="admin-box" style="text-align:center;color:var(--text-dark-secondary);padding:40px;">
+            Loading submitted models arranged by challenge...
           </div>
         </div>
       </section>

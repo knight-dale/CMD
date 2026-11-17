@@ -58,6 +58,7 @@ function initAdminNavigation() {
 
       if (heading) heading.textContent = titles[targetPaneId] || 'Console';
       if (catTag) catTag.textContent = categories[targetPaneId] || 'MANAGEMENT';
+      if (targetPaneId === 'pane-submissions') renderSubmissionsList();
       if (targetPaneId === 'pane-members') renderMembersList();
       if (targetPaneId === 'pane-problem-submissions') renderProblemSubmissions();
     });
@@ -366,23 +367,103 @@ function initChallengePublishForm() {
   });
 }
 
+let cachedSubmissions = [];
+let cachedChallenges = [];
+let submissionsControlsInitialized = false;
+
 async function renderSubmissionsList() {
-  const tbody = document.getElementById('submissions-table-body');
-  if (!tbody) return;
+  const container = document.getElementById('submissions-grouped-container');
+  if (!container) return;
 
-  let subs = [];
-  if (window.cmdSupabase) {
-    subs = await window.cmdSupabase.fetchSubmissions();
+  container.innerHTML = `
+    <div class="admin-box" style="text-align:center;color:var(--text-dark-secondary);padding:32px;">
+      Loading submissions arranged by challenge...
+    </div>
+  `;
+
+  try {
+    if (window.cmdSupabase) {
+      const [challengesData, subsData] = await Promise.all([
+        window.cmdSupabase.fetchAllChallenges(),
+        window.cmdSupabase.fetchSubmissions()
+      ]);
+      cachedChallenges = Array.isArray(challengesData) ? challengesData : [];
+      cachedSubmissions = Array.isArray(subsData) ? subsData : [];
+    }
+  } catch (err) {
+    console.error('Failed fetching submissions or challenges:', err);
   }
 
+  populateSubmissionsFilterDropdown();
+
+  if (!submissionsControlsInitialized) {
+    initSubmissionsFilterListeners();
+    submissionsControlsInitialized = true;
+  }
+
+  displayGroupedSubmissions();
+}
+
+function populateSubmissionsFilterDropdown() {
+  const select = document.getElementById('submissions-challenge-filter');
+  if (!select) return;
+
+  const currentVal = select.value || 'all';
+  select.innerHTML = '<option value="all">All Challenges (Arranged by Challenge)</option>';
+
+  const sortedChallenges = [...cachedChallenges].sort((a, b) => (Number(b.week_number) || 0) - (Number(a.week_number) || 0));
+
+  sortedChallenges.forEach(c => {
+    const subsCount = cachedSubmissions.filter(s => String(s.challenge_id || '') === String(c.id)).length;
+    const opt = document.createElement('option');
+    opt.value = String(c.id);
+    const activeLabel = c.is_active ? ' [LIVE ACTIVE]' : '';
+    opt.textContent = `Week ${c.week_number}: ${c.title} (${subsCount} ${subsCount === 1 ? 'submission' : 'submissions'})${activeLabel}`;
+    select.appendChild(opt);
+  });
+
+  const unassignedCount = cachedSubmissions.filter(s => {
+    if (!s.challenge_id) return true;
+    return !cachedChallenges.some(c => String(c.id) === String(s.challenge_id));
+  }).length;
+
+  if (unassignedCount > 0) {
+    const unOpt = document.createElement('option');
+    unOpt.value = 'unassigned';
+    unOpt.textContent = `General / Unassigned (${unassignedCount} submissions)`;
+    select.appendChild(unOpt);
+  }
+
+  if ([...select.options].some(o => o.value === currentVal)) {
+    select.value = currentVal;
+  } else {
+    select.value = 'all';
+  }
+}
+
+function initSubmissionsFilterListeners() {
+  const filterSelect = document.getElementById('submissions-challenge-filter');
+  const searchInput = document.getElementById('submissions-search-input');
+
+  if (filterSelect) {
+    filterSelect.addEventListener('change', () => {
+      displayGroupedSubmissions();
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      displayGroupedSubmissions();
+    });
+  }
+}
+
+function renderSubmissionRowsHtml(subs) {
   if (!subs || subs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No member submissions recorded yet.</td></tr>`;
-    return;
+    return `<tr><td colspan="11" style="text-align:center;color:var(--text-dark-secondary);padding:22px;">No submissions recorded for this challenge.</td></tr>`;
   }
 
-  tbody.innerHTML = '';
-  subs.forEach(s => {
-    const tr = document.createElement('tr');
+  return subs.map(s => {
     const dateStr = s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent';
     const massOk = s.mass_correct ? 'YES' : 'NO';
     const cogOk = s.cog_correct ? 'YES' : 'NO';
@@ -396,21 +477,220 @@ async function renderSubmissionsList() {
     const cogStyle = s.cog_correct ? 'color:var(--neon-green);font-weight:700;' : 'color:#E05C5C;';
     const promptStyle = s.prompt_bonus ? 'color:var(--neon-green);font-weight:700;' : 'color:var(--text-dark-secondary);';
 
-    tr.innerHTML = `
-      <td style="color:var(--text-dark-secondary);font-size:0.8rem;">${dateStr}</td>
-      <td style="font-weight:700;">${s.member_name}</td>
-      <td style="font-size:0.8rem;color:var(--text-dark-secondary);">${s.member_email}</td>
-      <td>${s.model_title}</td>
-      <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? s.submitted_mass + ' g' : 'N/A'}</td>
-      <td style="${massStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? massOk : 'N/A'}</td>
-      <td style="font-family:var(--font-mono);font-size:0.85rem;">${cogText}</td>
-      <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${hasAnyCog ? cogOk : 'N/A'}</td>
-      <td style="${promptStyle}font-family:var(--font-mono);font-size:0.85rem;">${promptBonusText}</td>
-      <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
-      <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${s.notes || 'None'}</td>
+    const modelDisplay = s.pdf_url && s.pdf_url !== '#'
+      ? `<a href="${s.pdf_url}" target="_blank" rel="noopener noreferrer" style="color:var(--neon-green);text-decoration:none;font-weight:600;" title="View submitted CAD drawing / model">${escapeHtml(s.model_title)} &nearr;</a>`
+      : `<span style="font-weight:600;">${escapeHtml(s.model_title)}</span>`;
+
+    return `
+      <tr>
+        <td style="color:var(--text-dark-secondary);font-size:0.8rem;white-space:nowrap;">${dateStr}</td>
+        <td style="font-weight:700;">${escapeHtml(s.member_name)}</td>
+        <td style="font-size:0.8rem;color:var(--text-dark-secondary);">${escapeHtml(s.member_email)}</td>
+        <td>${modelDisplay}</td>
+        <td style="font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? s.submitted_mass + ' g' : 'N/A'}</td>
+        <td style="${massStyle}font-family:var(--font-mono);font-size:0.85rem;">${s.submitted_mass != null ? massOk : 'N/A'}</td>
+        <td style="font-family:var(--font-mono);font-size:0.85rem;white-space:nowrap;">${cogText}</td>
+        <td style="${cogStyle}font-family:var(--font-mono);font-size:0.85rem;">${hasAnyCog ? cogOk : 'N/A'}</td>
+        <td style="${promptStyle}font-family:var(--font-mono);font-size:0.85rem;">${promptBonusText}</td>
+        <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${s.points_awarded || 0}</td>
+        <td style="color:var(--text-dark-secondary);font-size:0.8rem;max-width:200px;">${escapeHtml(s.notes || 'None')}</td>
+      </tr>
     `;
-    tbody.appendChild(tr);
+  }).join('');
+}
+
+function displayGroupedSubmissions() {
+  const container = document.getElementById('submissions-grouped-container');
+  if (!container) return;
+
+  const filterSelect = document.getElementById('submissions-challenge-filter');
+  const searchInput = document.getElementById('submissions-search-input');
+  const totalBadge = document.getElementById('submissions-total-badge');
+  const activeBadge = document.getElementById('submissions-active-badge');
+
+  const selectedChallengeId = filterSelect ? filterSelect.value : 'all';
+  const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+  if (totalBadge) {
+    totalBadge.textContent = `TOTAL: ${cachedSubmissions.length}`;
+  }
+
+  const activeChallenge = cachedChallenges.find(c => c.is_active);
+  if (activeBadge) {
+    const activeSubsCount = activeChallenge
+      ? cachedSubmissions.filter(s => String(s.challenge_id || '') === String(activeChallenge.id)).length
+      : 0;
+    activeBadge.textContent = `ACTIVE BRIEF: ${activeSubsCount}`;
+  }
+
+  if (cachedSubmissions.length === 0 && cachedChallenges.length === 0) {
+    container.innerHTML = `
+      <div class="admin-box" style="text-align:center;color:var(--text-dark-secondary);padding:32px;">
+        No weekly challenges or student submissions found in the system.
+      </div>
+    `;
+    return;
+  }
+
+  const sortedChallenges = [...cachedChallenges].sort((a, b) => {
+    if (a.is_active && !b.is_active) return -1;
+    if (!a.is_active && b.is_active) return 1;
+    return (Number(b.week_number) || 0) - (Number(a.week_number) || 0);
   });
+
+  let challengesToShow = [];
+  if (selectedChallengeId === 'all') {
+    challengesToShow = sortedChallenges;
+  } else if (selectedChallengeId === 'unassigned') {
+    challengesToShow = [];
+  } else {
+    challengesToShow = sortedChallenges.filter(c => String(c.id) === selectedChallengeId);
+  }
+
+  container.innerHTML = '';
+  let renderedGroupsCount = 0;
+
+  challengesToShow.forEach(c => {
+    let challengeSubs = cachedSubmissions.filter(s => String(s.challenge_id || '') === String(c.id));
+
+    if (searchTerm) {
+      challengeSubs = challengeSubs.filter(s =>
+        (s.member_name || '').toLowerCase().includes(searchTerm) ||
+        (s.member_email || '').toLowerCase().includes(searchTerm) ||
+        (s.model_title || '').toLowerCase().includes(searchTerm) ||
+        (s.notes || '').toLowerCase().includes(searchTerm)
+      );
+    }
+
+    const box = document.createElement('div');
+    box.className = 'admin-box';
+    box.style.marginBottom = '24px';
+
+    const statusBadge = c.is_active
+      ? `<span class="mono-tag" style="background:rgba(34,238,96,0.15);color:var(--neon-green);border:1px solid rgba(34,238,96,0.35);">LIVE ACTIVE</span>`
+      : `<span class="mono-tag" style="background:rgba(255,255,255,0.05);color:var(--text-dark-secondary);">CONCLUDED</span>`;
+
+    const massTarget = c.answer_mass != null ? `${c.answer_mass} g (±${c.answer_mass_tolerance ?? 0.05})` : 'Not set';
+    let cogTarget = 'Not set';
+    if (c.answer_cog_x != null && c.answer_cog_y != null && c.answer_cog_z != null) {
+      cogTarget = `(${c.answer_cog_x}, ${c.answer_cog_y}, ${c.answer_cog_z}) mm`;
+    } else if (c.answer_cog != null) {
+      cogTarget = `${c.answer_cog} mm`;
+    }
+
+    box.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:18px;border-bottom:1px solid var(--border-dark);padding-bottom:14px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span class="mono-tag orange">WEEK ${c.week_number}</span>
+            ${statusBadge}
+            ${c.brief_pdf_url && c.brief_pdf_url !== '#' ? `<a href="${c.brief_pdf_url}" target="_blank" rel="noopener noreferrer" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--neon-green);text-decoration:none;">VIEW BRIEF &nearr;</a>` : ''}
+          </div>
+          <h4 style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:#FFFFFF;">${escapeHtml(c.title)}</h4>
+          <p style="margin:0;font-size:0.8rem;color:var(--text-dark-secondary);max-width:700px;line-height:1.4;">${escapeHtml(c.description || '')}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span style="font-family:var(--font-mono);font-size:0.75rem;padding:5px 12px;background:rgba(255,255,255,0.06);border-radius:3px;color:#FFF;">
+            <strong>${challengeSubs.length}</strong> ${challengeSubs.length === 1 ? 'Submission' : 'Submissions'}
+          </span>
+          <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dark-secondary);">
+            Target: Mass ${massTarget} | CoG ${cogTarget}
+          </span>
+        </div>
+      </div>
+      <div class="admin-table-container">
+        <table class="admin-data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Member Name</th>
+              <th>Email</th>
+              <th>Model Title</th>
+              <th>Mass (g)</th>
+              <th>Mass OK</th>
+              <th>Centre of Mass (mm)</th>
+              <th>Centre of Mass OK</th>
+              <th>Prompt (2hr)</th>
+              <th>Pts</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderSubmissionRowsHtml(challengeSubs)}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    container.appendChild(box);
+    renderedGroupsCount++;
+  });
+
+  if (selectedChallengeId === 'all' || selectedChallengeId === 'unassigned') {
+    let unassignedSubs = cachedSubmissions.filter(s => {
+      if (!s.challenge_id) return true;
+      return !cachedChallenges.some(c => String(c.id) === String(s.challenge_id));
+    });
+
+    if (searchTerm) {
+      unassignedSubs = unassignedSubs.filter(s =>
+        (s.member_name || '').toLowerCase().includes(searchTerm) ||
+        (s.member_email || '').toLowerCase().includes(searchTerm) ||
+        (s.model_title || '').toLowerCase().includes(searchTerm) ||
+        (s.notes || '').toLowerCase().includes(searchTerm)
+      );
+    }
+
+    if (unassignedSubs.length > 0 || selectedChallengeId === 'unassigned') {
+      const unBox = document.createElement('div');
+      unBox.className = 'admin-box';
+      unBox.style.marginBottom = '24px';
+      unBox.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border-dark);padding-bottom:12px;">
+          <div>
+            <span class="mono-tag" style="background:rgba(255,255,255,0.08);color:#CCC;">LEGACY / GENERAL</span>
+            <h4 style="margin:4px 0 0;font-size:1.1rem;font-weight:700;color:#FFF;">Unassigned Submissions</h4>
+            <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-dark-secondary);">Submissions not associated with a registered challenge ID.</p>
+          </div>
+          <span style="font-family:var(--font-mono);font-size:0.75rem;padding:5px 12px;background:rgba(255,255,255,0.06);border-radius:3px;color:#FFF;">
+            <strong>${unassignedSubs.length}</strong> ${unassignedSubs.length === 1 ? 'Submission' : 'Submissions'}
+          </span>
+        </div>
+        <div class="admin-table-container">
+          <table class="admin-data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Member Name</th>
+                <th>Email</th>
+                <th>Model Title</th>
+                <th>Mass (g)</th>
+                <th>Mass OK</th>
+                <th>Centre of Mass (mm)</th>
+                <th>Centre of Mass OK</th>
+                <th>Prompt (2hr)</th>
+                <th>Pts</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderSubmissionRowsHtml(unassignedSubs)}
+            </tbody>
+          </table>
+        </div>
+      `;
+      container.appendChild(unBox);
+      renderedGroupsCount++;
+    }
+  }
+
+  if (renderedGroupsCount === 0) {
+    container.innerHTML = `
+      <div class="admin-box" style="text-align:center;color:var(--text-dark-secondary);padding:32px;">
+        No submissions found matching the selected challenge or search query.
+      </div>
+    `;
+  }
 }
 
 async function renderProblemSubmissions() {
@@ -898,10 +1178,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.cmdSupabase) {
     const isAdm = await window.cmdSupabase.isAdmin();
     if (!isAdm) {
-      window.location.href = 'auth.html';
+      window.location.replace('auth.html');
       return;
     }
+  } else {
+    window.location.replace('auth.html');
+    return;
   }
+
+  // Executive authorization confirmed: grant display clearance
+  document.documentElement.classList.add('admin-authorized');
+  const guard = document.getElementById('admin-security-guard');
+  if (guard) guard.remove();
 
   initAdminNavigation();
   initProjectUploadForm();

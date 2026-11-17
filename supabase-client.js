@@ -255,7 +255,7 @@ async function hasUserSubmittedForChallenge(challengeId, memberEmail) {
       .from('challenge_submissions')
       .select('id')
       .eq('challenge_id', challengeId)
-      .eq('member_email', memberEmail)
+      .ilike('member_email', memberEmail.trim())
       .limit(1);
     if (error) throw error;
     return Array.isArray(data) && data.length > 0;

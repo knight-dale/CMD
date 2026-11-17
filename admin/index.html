@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Security Gateway | CMD Kimathi</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    body {
+      background: #0E1012;
+      color: #FFFFFF;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #22EE60;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    (function() {
+      var hasToken = false;
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && (k.indexOf('sb-') === 0 || k.indexOf('supabase.auth') !== -1) && k.indexOf('-auth-token') !== -1) {
+            var raw = localStorage.getItem(k);
+            if (raw && raw.length > 20) {
+              var s = JSON.parse(raw);
+              if (s && (s.access_token || s.currentSession || s.user)) {
+                hasToken = true;
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {}
+
+      if (!hasToken) {
+        window.location.replace('../auth.html');
+      } else {
+        window.location.replace('../admin.html');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div class="spinner"></div>
+  <div style="font-size:0.8rem;color:#888;">Verifying executive authorization...</div>
+</body>
+</html>
