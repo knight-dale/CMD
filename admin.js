@@ -608,7 +608,6 @@ async function renderLeaderboardAdmin() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="font-family:var(--font-mono);font-weight:700;">${computedRank}</td>
-      <td style="font-family:var(--font-mono);font-size:0.8rem;">${m.member_email || ''}</td>
       <td style="font-weight:700;">${m.display_name}</td>
       <td style="font-family:var(--font-mono);color:var(--neon-green);font-weight:700;">${m.points}</td>
       <td style="font-size:0.75rem;color:var(--text-dark-secondary);">${(m.badges || []).join(', ')}</td>
@@ -624,7 +623,6 @@ async function renderLeaderboardAdmin() {
     const editBtn = tr.querySelector('.btn-edit-entry');
     editBtn.addEventListener('click', () => {
       document.getElementById('lb-id').value = m.id;
-      document.getElementById('lb-email').value = m.member_email || '';
       document.getElementById('lb-name').value = m.display_name;
       document.getElementById('lb-points').value = m.points;
       document.getElementById('lb-count').value = m.submission_count || 0;
@@ -671,23 +669,16 @@ function initLeaderboardEditorForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('lb-id').value;
-    const email = document.getElementById('lb-email').value.toLowerCase().trim();
     const name = document.getElementById('lb-name').value;
     const points = parseInt(document.getElementById('lb-points').value, 10);
     const count = parseInt(document.getElementById('lb-count').value, 10);
     const badgesStr = document.getElementById('lb-badges').value;
-
-    if (!email) {
-      showToast('Member email is required', 'error');
-      return;
-    }
 
     const badges = badgesStr.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
 
     try {
       if (id) {
         await window.cmdSupabase.updateLeaderboardEntry(id, {
-          member_email: email,
           display_name: name,
           points,
           submission_count: count,
@@ -696,7 +687,6 @@ function initLeaderboardEditorForm() {
         showToast('Member standings updated', 'success');
       } else {
         await window.cmdSupabase.addLeaderboardEntry({
-          member_email: email,
           display_name: name,
           points,
           submission_count: count,
