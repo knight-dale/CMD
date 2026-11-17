@@ -128,6 +128,10 @@ async function initAuthState() {
         setTimeout(() => location.reload(), 500);
       });
     }
+
+    if (window.cmdCurrentChallengeId) {
+      checkUserSubmissionStatus(window.cmdCurrentChallengeId);
+    }
   } else {
     if (unauthDiv) unauthDiv.style.display = 'block';
     if (authDiv) authDiv.style.display = 'none';
@@ -156,19 +160,74 @@ function setChallengeOpen(isOpen, hasBrief) {
   refreshSubmitButton();
 }
 
+let userSubmittedCurrentChallenge = false;
+
+async function checkUserSubmissionStatus(challengeId) {
+  if (!window.cmdSupabase || !challengeId) return;
+  try {
+    const user = await window.cmdSupabase.getCurrentUser();
+    if (user && user.email) {
+      userSubmittedCurrentChallenge = await window.cmdSupabase.hasUserSubmittedForChallenge(challengeId, user.email);
+    } else {
+      userSubmittedCurrentChallenge = false;
+    }
+  } catch (err) {
+    console.warn('Submission status check error:', err);
+  }
+  refreshSubmitButton();
+}
+
 // Submit needs an active challenge AND the Problem 1 brief downloaded.
-// Also shows or hides the explanation note.
+// If the user has already submitted, gray out button and show receipt message.
 function refreshSubmitButton() {
   const submitBtn = document.getElementById('submit-model-modal-btn');
+  const navSubmitLink = document.getElementById('open-submit-modal-link');
   const note = document.getElementById('submit-lock-note');
+  const submittedBanner = document.getElementById('challenge-submitted-banner');
 
   const isOpen = window.cmdChallengeOpen === true;
   const downloaded = hasDownloadedProblem1();
+
+  if (userSubmittedCurrentChallenge) {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.classList.add('is-disabled');
+      submitBtn.style.background = '#282C31';
+      submitBtn.style.color = '#8A929B';
+      submitBtn.style.border = '1px solid #3E444C';
+      submitBtn.style.cursor = 'not-allowed';
+      submitBtn.innerHTML = 'Submission Received &#10003;';
+    }
+    if (navSubmitLink) {
+      navSubmitLink.disabled = true;
+      navSubmitLink.style.opacity = '0.5';
+      navSubmitLink.style.cursor = 'not-allowed';
+      navSubmitLink.innerHTML = 'Challenge Submitted &#10003;';
+    }
+    if (submittedBanner) submittedBanner.style.display = 'block';
+    if (note) note.hidden = true;
+    return;
+  }
+
+  if (submittedBanner) submittedBanner.style.display = 'none';
+
   const canSubmit = isOpen && downloaded;
 
   if (submitBtn) {
-    submitBtn.classList.toggle('is-disabled', !canSubmit);
     submitBtn.disabled = !canSubmit;
+    submitBtn.classList.toggle('is-disabled', !canSubmit);
+    submitBtn.style.background = '';
+    submitBtn.style.color = '';
+    submitBtn.style.border = '';
+    submitBtn.style.cursor = canSubmit ? 'pointer' : 'not-allowed';
+    submitBtn.innerHTML = 'Submit Your Model &rarr;';
+  }
+
+  if (navSubmitLink) {
+    navSubmitLink.disabled = false;
+    navSubmitLink.style.opacity = '1';
+    navSubmitLink.style.cursor = 'pointer';
+    navSubmitLink.innerHTML = 'Submit Challenge Entry';
   }
 
   // Only explain when there IS an active challenge but the brief is missing
@@ -241,7 +300,11 @@ async function loadActiveChallenge() {
   const hasTimer = startCountdown(challenge.end_date);
   if (countdown) countdown.style.display = hasTimer ? 'flex' : 'none';
 
+  window.cmdCurrentChallengeId = challenge ? challenge.id : null;
   setChallengeOpen(true, Boolean(briefUrl));
+  if (window.cmdCurrentChallengeId) {
+    checkUserSubmissionStatus(window.cmdCurrentChallengeId);
+  }
 }
 
 function escapeHtml(s) {
@@ -266,14 +329,13 @@ async function loadLeaderboardTable() {
   list.forEach((item, index) => {
     const rankNum = index + 1;
     const rankClass = rankNum === 1 ? 'gold' : rankNum === 2 ? 'silver' : rankNum === 3 ? 'bronze' : '';
-    const badgesHtml = (item.badges || []).map(b => `<span class="badge-tag">${escapeHtml(b)}</span>`).join(' ');
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="rank-text-pill ${rankClass}">${rankNum}</span></td>
       <td style="font-weight:700;">${escapeHtml(item.display_name)}</td>
+      <td style="font-family:var(--font-mono);font-weight:700;color:var(--neon-green);">${item.current_points != null ? item.current_points : 0} PTS</td>
       <td style="font-family:var(--font-mono);font-weight:700;">${Number(item.points) || 0} PTS</td>
-      <td>${badgesHtml || '<span style="color:var(--text-light-secondary);font-size:0.75rem;">MEMBER</span>'}</td>
       <td style="text-align:right;font-family:var(--font-mono);color:var(--text-light-secondary);">${item.submission_count || 0}</td>
     `;
     tbody.appendChild(tr);

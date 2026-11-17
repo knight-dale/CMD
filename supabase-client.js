@@ -151,9 +151,10 @@ async function fetchCurrentChallenge() {
   const client = getClient();
   if (!client) return null;
   try {
+    // Security: Only select public metadata. Competition answer mass/CoG must never leak to client JS!
     const { data, error } = await client
       .from('challenges')
-      .select('*')
+      .select('id, week_number, title, description, start_date, end_date, brief_pdf_url, is_active, created_at')
       .eq('is_active', true)
       .order('start_date', { ascending: false })
       .order('week_number', { ascending: false })
@@ -169,16 +170,66 @@ async function fetchCurrentChallenge() {
 async function fetchLeaderboard() {
   const client = getClient();
   if (!client) return null;
-  const { data, error } = await client
-    .from('leaderboard')
-    .select('id, display_name, points, badges, submission_count')
-    .order('points', { ascending: false })
-    .limit(50);
-  if (error) {
-    console.error('Leaderboard fetch failed:', error);
+  try {
+    const { data, error } = await client
+      .from('leaderboard')
+      .select('id, member_email, display_name, points, badges, submission_count')
+      .order('points', { ascending: false })
+      .limit(50);
+    if (error) {
+      console.error('Leaderboard fetch failed:', error);
+      return null;
+    }
+    const rows = data || [];
+
+    // Query active challenge to calculate Current Challenge Points for each member
+    let activeChallengeId = null;
+    try {
+      const { data: actChallenge } = await client
+        .from('challenges')
+        .select('id')
+        .eq('is_active', true)
+        .order('start_date', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (actChallenge) activeChallengeId = actChallenge.id;
+    } catch {}
+
+    if (activeChallengeId && rows.length > 0) {
+      try {
+        const { data: subs } = await client
+          .from('challenge_submissions')
+          .select('member_email, member_name, points_awarded')
+          .eq('challenge_id', activeChallengeId);
+
+        if (Array.isArray(subs)) {
+          const subMap = {};
+          subs.forEach(s => {
+            const emailKey = (s.member_email || '').toLowerCase().trim();
+            const nameKey = (s.member_name || '').toLowerCase().trim();
+            const pts = Number(s.points_awarded) || 0;
+            if (emailKey) subMap[emailKey] = pts;
+            if (nameKey && !subMap[nameKey]) subMap[nameKey] = pts;
+          });
+
+          rows.forEach(r => {
+            const rEmail = (r.member_email || '').toLowerCase().trim();
+            const rName = (r.display_name || '').toLowerCase().trim();
+            r.current_points = subMap[rEmail] !== undefined ? subMap[rEmail] : (subMap[rName] !== undefined ? subMap[rName] : 0);
+          });
+        }
+      } catch (err) {
+        console.warn('Could not query current challenge points:', err);
+      }
+    } else {
+      rows.forEach(r => { r.current_points = 0; });
+    }
+
+    return rows;
+  } catch (err) {
+    console.error('Leaderboard fetch error:', err);
     return null;
   }
-  return data || [];
 }
 
 async function fetchSuggestions() {
@@ -246,22 +297,34 @@ async function fetchSubmissions(challengeId) {
   }
 }
 
-// Check if a user has already submitted for a specific challenge
+// Check if a user has already submitted for a specific challenge (authoritative server-side verification)
 async function hasUserSubmittedForChallenge(challengeId, memberEmail) {
-  const client = getClient();
-  if (!client || !challengeId || !memberEmail) return false;
+  if (!challengeId || !memberEmail) return false;
+
+  // 1. Authoritative check via Code.gs backend (checks both Google Sheets & Supabase)
   try {
-    const { data, error } = await client
-      .from('challenge_submissions')
-      .select('id')
-      .eq('challenge_id', challengeId)
-      .ilike('member_email', memberEmail.trim())
-      .limit(1);
-    if (error) throw error;
-    return Array.isArray(data) && data.length > 0;
-  } catch {
-    return false;
+    const res = await sendToBackend('check_user_submission', { challengeId, memberEmail });
+    if (res && res.hasSubmitted !== undefined) {
+      return !!res.hasSubmitted;
+    }
+  } catch (err) {
+    console.warn('Backend check_user_submission fallback to client check:', err.message);
   }
+
+  // 2. Fallback check via Supabase client query
+  const client = getClient();
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('challenge_submissions')
+        .select('id')
+        .eq('challenge_id', challengeId)
+        .ilike('member_email', memberEmail.trim())
+        .limit(1);
+      if (!error && Array.isArray(data) && data.length > 0) return true;
+    } catch {}
+  }
+  return false;
 }
 
 async function fetchMembers() {

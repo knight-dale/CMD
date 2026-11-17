@@ -330,6 +330,13 @@
                     style="flex:1;min-width:160px;">Submit Your Model &rarr;</button>
           </div>
 
+          <div id="challenge-submitted-banner" style="display:none;margin-top:14px;padding:12px 16px;background:rgba(34,238,96,0.08);border:1px solid rgba(34,238,96,0.3);border-radius:4px;color:#0B8A3E;font-size:0.85rem;line-height:1.5;">
+            <strong style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:0.78rem;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:2px;color:#0B8A3E;">
+              <span>&#10003;</span> Submission Received
+            </strong>
+            We have received your submission for this weekly challenge. Only one submission per challenge is allowed.
+          </div>
+
           <p class="submit-lock-note" id="submit-lock-note" hidden>
             To unlock <strong>Submit Your Model</strong>, first download the
             <a href="#problems">Problem 1 brief</a> (Leather Turning Drum) in the
@@ -480,8 +487,8 @@
             <tr>
               <th style="width:80px;">Rank</th>
               <th>Member Name</th>
-              <th>Points</th>
-              <th>Badges Earned</th>
+              <th>Current Challenge Pts</th>
+              <th>Total Points</th>
               <th style="text-align:right;">Submissions</th>
             </tr>
           </thead>
@@ -671,7 +678,7 @@
 
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button type="button" class="btn-black" id="res-goto-leaderboard-btn" style="width:100%;">View on Standings Leaderboard &rarr;</button>
-          <button type="button" class="btn-dark-outline" id="res-submit-another-btn" style="width:100%;font-size:0.8rem;padding:9px;color:var(--text-light-primary);border-color:var(--border-light);">Submit Another Model</button>
+          <div style="font-size:0.8rem;text-align:center;color:var(--text-light-secondary);padding:6px 0;">Official submission recorded. Only one submission per challenge is permitted.</div>
         </div>
       </div>
     </div>

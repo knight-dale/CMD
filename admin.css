@@ -72,6 +72,7 @@
   flex: 1;
   padding: 40px clamp(20px, 4vw, 64px);
   max-width: 1400px;
+  min-width: 0;
 }
 
 .admin-top-bar {
@@ -85,6 +86,7 @@
 
 .admin-pane {
   display: none;
+  min-width: 0;
 }
 
 .admin-pane.active {
@@ -97,6 +99,8 @@
   border-radius: 4px;
   padding: 32px;
   margin-bottom: 32px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .admin-form-two-col {
@@ -128,9 +132,37 @@
 
 .admin-table-container {
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  width: 100%;
   border: 1px solid var(--border-dark);
   border-radius: 4px;
   background: #101214;
+  scrollbar-width: thin;
+  scrollbar-color: #383E46 #101214;
+}
+
+.admin-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.admin-table-container::-webkit-scrollbar-track {
+  background: #101214;
+  border-radius: 4px;
+}
+
+.admin-table-container::-webkit-scrollbar-thumb {
+  background: #383E46;
+  border-radius: 4px;
+}
+
+.admin-table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-green, #22EE60);
+}
+
+.admin-table-container table {
+  min-width: 820px;
 }
 
 .admin-data-table {
