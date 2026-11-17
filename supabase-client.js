@@ -246,6 +246,24 @@ async function fetchSubmissions(challengeId) {
   }
 }
 
+// Check if a user has already submitted for a specific challenge
+async function hasUserSubmittedForChallenge(challengeId, memberEmail) {
+  const client = getClient();
+  if (!client || !challengeId || !memberEmail) return false;
+  try {
+    const { data, error } = await client
+      .from('challenge_submissions')
+      .select('id')
+      .eq('challenge_id', challengeId)
+      .eq('member_email', memberEmail)
+      .limit(1);
+    if (error) throw error;
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function fetchMembers() {
   const client = getClient();
   let members = [];
@@ -782,6 +800,7 @@ window.cmdSupabase = {
   fetchSubmissions,
   fetchMembers,
   fetchAllChallenges,
+  hasUserSubmittedForChallenge,
   addProject,
   updateProject,
   deleteProject,

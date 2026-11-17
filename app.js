@@ -738,6 +738,16 @@ function initUploadModal() {
         return;
       }
 
+      // Check if user has already submitted for the current challenge
+      const challenge = await window.cmdSupabase.fetchCurrentChallenge();
+      if (challenge) {
+        const alreadySubmitted = await window.cmdSupabase.hasUserSubmittedForChallenge(challenge.id, user.email);
+        if (alreadySubmitted) {
+          showToast('You have already submitted for this weekly challenge. Only one submission per challenge is allowed.', 'error');
+          return;
+        }
+      }
+
       const token = ++submissionToken;
 
       // Instant feedback
