@@ -1271,3 +1271,27 @@ button {
 @media (max-width: 1024px) {
   .contact-grid { grid-template-columns: 1fr; }
 }
+
+.btn-black.is-disabled,
+.btn-black:disabled,
+.btn-green.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.btn-black.is-disabled:hover,
+.btn-black:disabled:hover,
+.btn-green.is-disabled:hover {
+  transform: none;
+  background: #101214;
+}
+
+.btn-green.is-disabled:hover {
+  background: var(--neon-green);
+}
+
+/* Anchor buttons can't be truly disabled, so block clicks */
+a.is-disabled {
+  pointer-events: none;
+}

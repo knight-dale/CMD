@@ -136,6 +136,10 @@ async function initAuthState() {
 
 let countdownTimer = null;
 
+function hasDownloadedProblem1() {
+  return localStorage.getItem('problem1_downloaded') === 'true';
+}
+
 // Enables or disables the two challenge buttons. Also remembers the state for the nav-menu link.
 function setChallengeOpen(isOpen, hasBrief) {
   window.cmdChallengeOpen = isOpen;
@@ -150,9 +154,24 @@ function setChallengeOpen(isOpen, hasBrief) {
     dlBtn.tabIndex = enabled ? 0 : -1;
   }
   if (submitBtn) {
-    submitBtn.classList.toggle('is-disabled', !isOpen);
-    submitBtn.disabled = !isOpen;
+    // Needs an active challenge AND the Problem 1 brief downloaded
+    const canSubmit = isOpen && hasDownloadedProblem1();
+    submitBtn.classList.toggle('is-disabled', !canSubmit);
+    submitBtn.disabled = !canSubmit;
+    submitBtn.title = canSubmit
+      ? ''
+      : (isOpen ? 'Download the Problem 1 brief (Leather Turning Drum) first' : '');
   }
+}
+
+// Re-evaluates the submit button after the download state changes
+function refreshSubmitButton() {
+  const submitBtn = document.getElementById('submit-model-modal-btn');
+  if (!submitBtn) return;
+  const canSubmit = window.cmdChallengeOpen === true && hasDownloadedProblem1();
+  submitBtn.classList.toggle('is-disabled', !canSubmit);
+  submitBtn.disabled = !canSubmit;
+  submitBtn.title = canSubmit ? '' : 'Download the Problem 1 brief (Leather Turning Drum) first';
 }
 
 // Returns false if the date can't be read, so the countdown can stay hidden.
@@ -468,14 +487,11 @@ function initUploadModal() {
   if (downloadProblem1Btn) {
     downloadProblem1Btn.addEventListener('click', () => {
       localStorage.setItem('problem1_downloaded', 'true');
-      showToast('Problem 1 brief downloaded. You can now submit to the weekly challenge.', 'success');
+      refreshSubmitButton();
+      showToast('Problem 1 brief downloaded. You can now submit your model.', 'success');
     });
   }
 
-  // Check if user has downloaded Problem 1 PDF
-  function hasDownloadedProblem1() {
-    return localStorage.getItem('problem1_downloaded') === 'true';
-  }
 
   if (!modal) return;
 
@@ -631,6 +647,11 @@ function initUploadModal() {
       btn.addEventListener('click', async () => {
         if (window.cmdChallengeOpen === false) {
           showToast('There is no active challenge to submit to right now.', 'info');
+          return;
+        }
+        if (!hasDownloadedProblem1()) {
+          showToast('Download the Problem 1 brief first.', 'error');
+          document.getElementById('problems')?.scrollIntoView({ behavior: 'smooth' });
           return;
         }
         if (!window.cmdSupabase) {
