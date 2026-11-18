@@ -109,6 +109,7 @@
         <button type="button" class="admin-tab-trigger" data-tab="pane-leaderboard">Edit Leaderboard</button>
         <button type="button" class="admin-tab-trigger" data-tab="pane-suggestions">Community Polls</button>
         <button type="button" class="admin-tab-trigger" data-tab="pane-media">Site Media Manager</button>
+        <button type="button" class="admin-tab-trigger" data-tab="pane-certs">Certified Members</button>
       </nav>
 
       <div class="admin-sidebar-bottom">
@@ -504,8 +505,7 @@
             <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
               <span class="mono-tag orange" style="font-size:0.68rem;">FIRST HOMEPAGE IMAGE / HERO CAD</span>
               <div style="width:100%;aspect-ratio:1/1;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                <img id="preview-hero-img" src="assets/cad-assembly.svg" alt="Hero CAD graphic preview" style="max-width:100%;max-height:100%;object-fit:contain;">
-              </div>
+                <img id="preview-hero-img" alt="Hero CAD graphic preview" style="max-width:100%;max-height:100%;object-fit:contain;">              </div>
               <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
               <input type="file" id="media-hero-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
               <button type="button" class="btn-green" id="save-hero-img-btn" style="width:100%;margin-top:6px;">Update Hero Image</button>
@@ -515,8 +515,7 @@
             <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
               <span class="mono-tag muted-dark" style="font-size:0.68rem;">FEATURED PROJECT 01 / FORMULA STUDENT</span>
               <div style="width:100%;aspect-ratio:16/10;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                <img id="preview-proj1-img" src="assets/project-formula.svg" alt="Project 1 preview" style="width:100%;height:100%;object-fit:cover;">
-              </div>
+                <img id="preview-proj1-img" alt="Project 1 preview" style="width:100%;height:100%;object-fit:cover;">              </div>
               <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
               <input type="file" id="media-proj1-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
               <button type="button" class="btn-green" id="save-proj1-img-btn" style="width:100%;margin-top:6px;">Update Project 01</button>
@@ -526,8 +525,7 @@
             <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
               <span class="mono-tag muted-dark" style="font-size:0.68rem;">FEATURED PROJECT 02 / ATLAS ARM</span>
               <div style="width:100%;aspect-ratio:16/10;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                <img id="preview-proj2-img" src="assets/project-robotarm.svg" alt="Project 2 preview" style="width:100%;height:100%;object-fit:cover;">
-              </div>
+                <img id="preview-proj2-img" alt="Project 2 preview" style="width:100%;height:100%;object-fit:cover;">              </div>
               <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
               <input type="file" id="media-proj2-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
               <button type="button" class="btn-green" id="save-proj2-img-btn" style="width:100%;margin-top:6px;">Update Project 02</button>
@@ -537,24 +535,69 @@
             <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
               <span class="mono-tag muted-dark" style="font-size:0.68rem;">FEATURED PROJECT 03 / ROVER</span>
               <div style="width:100%;aspect-ratio:16/10;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                <img id="preview-proj3-img" src="assets/project-rover.svg" alt="Project 3 preview" style="width:100%;height:100%;object-fit:cover;">
-              </div>
+                <img id="preview-proj3-img" alt="Project 3 preview" style="width:100%;height:100%;object-fit:cover;">              </div>
               <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
               <input type="file" id="media-proj3-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
               <button type="button" class="btn-green" id="save-proj3-img-btn" style="width:100%;margin-top:6px;">Update Project 03</button>
               <button type="button" class="btn-dark-outline" id="reset-proj3-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
             </div>
-
-            <div style="background:#101214;border:1px solid var(--border-dark);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px;">
-              <span class="mono-tag muted-dark" style="font-size:0.68rem;">WORKSHOP SECTION PHOTO</span>
-              <div style="width:100%;aspect-ratio:16/9;max-height:180px;background:#171A1E;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                <img id="preview-workshop-img" src="assets/workshop-photo.svg" alt="Workshop preview" style="width:100%;height:100%;object-fit:cover;">
+          </div>
+        </div>
+      </section>
+      <section id="pane-certs" class="admin-pane">
+        <div class="admin-box">
+          <span class="mono-tag orange">CERTIFICATIONS</span>
+          <h3 style="font-size:1.35rem;font-weight:700;margin:8px 0 20px;">Add Certified Member</h3>
+          <form id="cert-admin-form">
+            <div class="admin-form-two-col">
+              <div>
+                <label class="field-label">Member Full Name</label>
+                <input type="text" id="cert-name" class="admin-field-input" required placeholder="e.g. Kelvin Mwangi">
               </div>
-              <label class="field-label" style="margin-top:4px;">Upload New JPG or PNG</label>
-              <input type="file" id="media-workshop-file" accept="image/*" style="font-size:0.8rem;color:var(--text-dark-secondary);">
-              <button type="button" class="btn-green" id="save-workshop-img-btn" style="width:100%;margin-top:6px;">Update Workshop Photo</button>
-              <button type="button" class="btn-dark-outline" id="reset-workshop-img-btn" style="width:100%;font-size:0.75rem;padding:8px;">Reset to Default</button>
+              <div>
+                <label class="field-label">Certification</label>
+                <input type="text" id="cert-title" class="admin-field-input" required list="cert-options" placeholder="CSWA">
+                <datalist id="cert-options">
+                  <option value="CSWA">
+                  <option value="CSWP">
+                  <option value="CSWE">
+                  <option value="CSWA-Simulation">
+                  <option value="CSWPA-SM">
+                  <option value="CSWPA-WE">
+                  <option value="CSWP-MBD">
+                  <option value="CSWA-Additive Manufacturing">
+                </datalist>
+              </div>
+              <div>
+                <label class="field-label">Year Issued</label>
+                <input type="number" id="cert-year" class="admin-field-input" min="2000" max="2100" placeholder="2026">
+              </div>
+              <div>
+                <label class="field-label">Credential URL (optional)</label>
+                <input type="text" id="cert-url" class="admin-field-input" placeholder="https://...">
+              </div>
             </div>
+            <button type="submit" class="btn-green" style="margin-top:24px;">Add Certification</button>
+          </form>
+        </div>
+
+        <div class="admin-box">
+          <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:16px;">Certified Members</h3>
+          <div class="admin-table-container">
+            <table class="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Certification</th>
+                  <th>Year</th>
+                  <th>Credential</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="certs-table-body">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-dark-secondary);">Loading...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
