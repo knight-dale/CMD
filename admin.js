@@ -31,7 +31,8 @@ function initAdminNavigation() {
     'pane-members': 'Registered Club Members',
     'pane-leaderboard': 'Edit Leaderboard',
     'pane-suggestions': 'Community Polls',
-    'pane-media': 'Site Media Manager'
+    'pane-media': 'Site Media Manager',
+    'pane-certs': 'Certified Members'
   };
 
   const categories = {
@@ -42,7 +43,8 @@ function initAdminNavigation() {
     'pane-members': 'MEMBER DIRECTORY',
     'pane-leaderboard': 'STANDINGS MANAGEMENT',
     'pane-suggestions': 'COMMUNITY VOTES',
-    'pane-media': 'ASSET REPLACEMENT'
+    'pane-media': 'ASSET REPLACEMENT',
+    'pane-certs': 'CERTIFICATIONS'
   };
 
   triggers.forEach(trigger => {
@@ -61,6 +63,7 @@ function initAdminNavigation() {
       if (targetPaneId === 'pane-submissions') renderSubmissionsList();
       if (targetPaneId === 'pane-members') renderMembersList();
       if (targetPaneId === 'pane-problem-submissions') renderProblemSubmissions();
+      if (targetPaneId === 'pane-certs') renderCertsList();
     });
   });
 }
@@ -1048,13 +1051,84 @@ async function renderSuggestionsAdmin() {
   });
 }
 
+async function renderCertsList() {
+  const tbody = document.getElementById('certs-table-body');
+  if (!tbody) return;
+
+  const rows = window.cmdSupabase ? await window.cmdSupabase.fetchCertifications() : null;
+
+  if (rows === null) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">Could not load certifications. Run the certified_members SQL.</td></tr>`;
+    return;
+  }
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-dark-secondary);padding:24px;">No certified members added yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const url = safeHref(r.credential_url);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:700;">${escapeHtml(r.member_name)}</td>
+      <td><span class="mono-tag orange">${escapeHtml(r.certification)}</span></td>
+      <td style="font-family:var(--font-mono);font-size:0.85rem;">${escapeHtml(r.issued_year || '')}</td>
+      <td>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn-sm-action">View</a>` : '<span style="color:var(--text-dark-secondary);font-size:0.8rem;">None</span>'}</td>
+      <td style="text-align:right;"><button type="button" class="btn-sm-danger btn-del-cert">Delete</button></td>
+    `;
+
+    tr.querySelector('.btn-del-cert').addEventListener('click', async () => {
+      if (!confirm(`Remove ${r.certification} for ${r.member_name}?`)) return;
+      try {
+        await window.cmdSupabase.deleteCertification(r.id);
+        showToast('Certification removed', 'success');
+        renderCertsList();
+      } catch (err) {
+        showToast(err.message || 'Error deleting certification', 'error');
+      }
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+function initCertForm() {
+  const form = document.getElementById('cert-admin-form');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const yearVal = document.getElementById('cert-year').value;
+    const urlVal = document.getElementById('cert-url').value.trim();
+
+    if (urlVal && !safeHref(urlVal)) {
+      showToast('Credential URL must start with http:// or https://', 'error');
+      return;
+    }
+
+    try {
+      await window.cmdSupabase.addCertification({
+        member_name: document.getElementById('cert-name').value.trim(),
+        certification: document.getElementById('cert-title').value.trim(),
+        issued_year: yearVal !== '' ? parseInt(yearVal, 10) : null,
+        credential_url: urlVal || null
+      });
+      showToast('Certification added', 'success');
+      form.reset();
+      renderCertsList();
+    } catch (err) {
+      showToast(err.message || 'Error adding certification', 'error');
+    }
+  });
+}
+
 function initSiteMediaManager() {
   const defaults = {
-    hero_image: 'assets/cad-assembly.svg',
-    project_1: 'assets/project-formula.svg',
-    project_2: 'assets/project-robotarm.svg',
-    project_3: 'assets/project-rover.svg',
-    workshop_image: 'assets/workshop-photo.svg'
+    hero_image: '',
+    project_1: '',
+    project_2: '',
+    project_3: ''
   };
 
   const getMediaMap = () => {
@@ -1076,7 +1150,6 @@ function initSiteMediaManager() {
     { key: 'project_1', fileId: 'media-proj1-file', previewId: 'preview-proj1-img', saveBtnId: 'save-proj1-img-btn', resetBtnId: 'reset-proj1-img-btn', label: 'Project 01 image' },
     { key: 'project_2', fileId: 'media-proj2-file', previewId: 'preview-proj2-img', saveBtnId: 'save-proj2-img-btn', resetBtnId: 'reset-proj2-img-btn', label: 'Project 02 image' },
     { key: 'project_3', fileId: 'media-proj3-file', previewId: 'preview-proj3-img', saveBtnId: 'save-proj3-img-btn', resetBtnId: 'reset-proj3-img-btn', label: 'Project 03 image' },
-    { key: 'workshop_image', fileId: 'media-workshop-file', previewId: 'preview-workshop-img', saveBtnId: 'save-workshop-img-btn', resetBtnId: 'reset-workshop-img-btn', label: 'Workshop session image' }
   ];
 
   slots.forEach(slot => {
@@ -1152,7 +1225,7 @@ function initSiteMediaManager() {
         if (window.cmdSupabase && window.cmdSupabase.resetSiteMediaSlot) {
           await window.cmdSupabase.resetSiteMediaSlot(slot.key);
         }
-        if (previewEl) previewEl.src = defaults[slot.key];
+        if (previewEl) previewEl.removeAttribute('src');
         if (fileInput) fileInput.value = '';
         showToast(`${slot.label} restored to default`, 'info');
       });
@@ -1204,6 +1277,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderLeaderboardAdmin();
   renderSuggestionsAdmin();
   initSiteMediaManager();
+  initCertForm();
+  renderCertsList();
 
   const reloadSubBtn = document.getElementById('reload-submissions-button');
   if (reloadSubBtn) {

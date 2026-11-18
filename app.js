@@ -6,7 +6,7 @@ const fallbackProjects = [
     description: 'Our lightest, fastest single seater yet. Engineered from the chassis up.',
     tools: ['SolidWorks', 'FEA Frame', 'Carbon Fiber'],
     specs: ['Mass: 195 kg', 'Torsional Rigidity: 2400 Nm/deg'],
-    image_url: 'assets/project-formula.svg',
+    image_url: '',
     pdf_url: '#'
   },
   {
@@ -16,7 +16,7 @@ const fallbackProjects = [
     description: 'Six degrees of freedom. Endless possibility. Precision motion, built from scratch.',
     tools: ['Fusion 360', 'PETG 3D Print', 'Kinematics'],
     specs: ['DOF: 6', 'Payload: 2.5 kg'],
-    image_url: 'assets/project-robotarm.svg',
+    image_url: '',
     pdf_url: '#'
   },
   {
@@ -26,7 +26,7 @@ const fallbackProjects = [
     description: 'An all terrain rover designed to go where the road does not.',
     tools: ['Inventor', 'ANSYS', 'Rocker Bogie'],
     specs: ['Clearance: 140 mm', 'Drive: 6x6 Brushless'],
-    image_url: 'assets/project-rover.svg',
+    image_url: '',
     pdf_url: '#'
   }
 ];
@@ -463,7 +463,6 @@ async function loadSiteMedia() {
       if (media.project_1) applyMediaSlot('project-img-1', media.project_1);
       if (media.project_2) applyMediaSlot('project-img-2', media.project_2);
       if (media.project_3) applyMediaSlot('project-img-3', media.project_3);
-      if (media.workshop_image) applyMediaSlot('workshop-main-image', media.workshop_image);
     } catch {
     }
   }
@@ -476,11 +475,43 @@ async function loadSiteMedia() {
         if (remote.project_1) applyMediaSlot('project-img-1', remote.project_1);
         if (remote.project_2) applyMediaSlot('project-img-2', remote.project_2);
         if (remote.project_3) applyMediaSlot('project-img-3', remote.project_3);
-        if (remote.workshop_image) applyMediaSlot('workshop-main-image', remote.workshop_image);
       }
     } catch {
     }
   }
+}
+
+async function loadCertifiedMembers() {
+  const box = document.getElementById('certified-members-list');
+  if (!box) return;
+
+  const rows = window.cmdSupabase && window.cmdSupabase.fetchCertifications
+    ? await window.cmdSupabase.fetchCertifications()
+    : null;
+
+  if (rows === null) { box.innerHTML = '<div class="cert-empty">Could not load certified members.</div>'; return; }
+  if (rows.length === 0) { box.innerHTML = '<div class="cert-empty">No certified members listed yet.</div>'; return; }
+
+  const grouped = new Map();
+  rows.forEach(r => {
+    if (!grouped.has(r.member_name)) grouped.set(r.member_name, []);
+    grouped.get(r.member_name).push(r);
+  });
+
+  box.innerHTML = '';
+  grouped.forEach((certs, name) => {
+    const badges = certs.map(c => {
+      const label = escapeHtml(c.certification) + (c.issued_year ? ' · ' + escapeHtml(c.issued_year) : '');
+      const safeUrl = /^https?:\/\//i.test(c.credential_url || '') ? escapeHtml(c.credential_url) : '';
+      return safeUrl
+        ? `<a class="cert-badge" href="${safeUrl}" target="_blank" rel="noopener">${label}</a>`
+        : `<span class="cert-badge">${label}</span>`;
+    }).join('');
+    const el = document.createElement('div');
+    el.className = 'cert-member';
+    el.innerHTML = `<div class="cert-member-name">${escapeHtml(name)}</div><div class="cert-badges">${badges}</div>`;
+    box.appendChild(el);
+  });
 }
 
 function initSuggestionForm() {
@@ -999,6 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadLeaderboardTable();
   initUploadModal();
   initDesignApproachModal();
+  loadCertifiedMembers();
 
   let lastY = window.scrollY;
   function handleNavScroll() {

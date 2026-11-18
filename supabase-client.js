@@ -171,61 +171,35 @@ async function fetchLeaderboard() {
   const client = getClient();
   if (!client) return null;
   try {
-    const { data, error } = await client
-      .from('leaderboard')
-      .select('id, member_email, display_name, points, badges, submission_count')
-      .order('points', { ascending: false })
-      .limit(50);
-    if (error) {
-      console.error('Leaderboard fetch failed:', error);
+    const [lbRes, curRes] = await Promise.all([
+      client
+        .from('leaderboard')
+        .select('id, display_name, points, badges, submission_count')
+        .order('points', { ascending: false })
+        .limit(50),
+      client
+        .from('leaderboard_current_points')
+        .select('leaderboard_id, current_points')
+    ]);
+
+    if (lbRes.error) {
+      console.error('Leaderboard fetch failed:', lbRes.error);
       return null;
     }
-    const rows = data || [];
 
-    // Query active challenge to calculate Current Challenge Points for each member
-    let activeChallengeId = null;
-    try {
-      const { data: actChallenge } = await client
-        .from('challenges')
-        .select('id')
-        .eq('is_active', true)
-        .order('start_date', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle();
-      if (actChallenge) activeChallengeId = actChallenge.id;
-    } catch {}
-
-    if (activeChallengeId && rows.length > 0) {
-      try {
-        const { data: subs } = await client
-          .from('challenge_submissions')
-          .select('member_email, member_name, points_awarded')
-          .eq('challenge_id', activeChallengeId);
-
-        if (Array.isArray(subs)) {
-          const subMap = {};
-          subs.forEach(s => {
-            const emailKey = (s.member_email || '').toLowerCase().trim();
-            const nameKey = (s.member_name || '').toLowerCase().trim();
-            const pts = Number(s.points_awarded) || 0;
-            if (emailKey) subMap[emailKey] = pts;
-            if (nameKey && !subMap[nameKey]) subMap[nameKey] = pts;
-          });
-
-          rows.forEach(r => {
-            const rEmail = (r.member_email || '').toLowerCase().trim();
-            const rName = (r.display_name || '').toLowerCase().trim();
-            r.current_points = subMap[rEmail] !== undefined ? subMap[rEmail] : (subMap[rName] !== undefined ? subMap[rName] : 0);
-          });
-        }
-      } catch (err) {
-        console.warn('Could not query current challenge points:', err);
-      }
-    } else {
-      rows.forEach(r => { r.current_points = 0; });
+    if (curRes.error) {
+      console.warn('Could not load current challenge points:', curRes.error);
     }
 
-    return rows;
+    const currentById = {};
+    (curRes.data || []).forEach(r => {
+      currentById[r.leaderboard_id] = Number(r.current_points) || 0;
+    });
+
+    return (lbRes.data || []).map(r => ({
+      ...r,
+      current_points: currentById[r.id] ?? 0
+    }));
   } catch (err) {
     console.error('Leaderboard fetch error:', err);
     return null;
@@ -840,6 +814,38 @@ async function deleteProblemSubmission(id) {
   return true;
 }
 
+async function fetchCertifications() {
+  const client = getClient();
+  if (!client) return null;
+  const { data, error } = await client
+    .from('certified_members')
+    .select('*')
+    .order('member_name', { ascending: true });
+  if (error) {
+    console.warn('Certifications fetch failed:', error);
+    return null;
+  }
+  return data || [];
+}
+
+async function addCertification(row) {
+  const client = getClient();
+  if (!client) throw new Error('Supabase client unconfigured.');
+  const { data, error } = await client.from('certified_members').insert([row]).select();
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Nothing was saved. Check the RLS policy.');
+  return data;
+}
+
+async function deleteCertification(id) {
+  const client = getClient();
+  if (!client) throw new Error('Supabase client unconfigured.');
+  const { data, error } = await client.from('certified_members').delete().eq('id', id).select();
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Nothing was deleted. Check the RLS policy.');
+  return true;
+}
+
 window.cmdSupabase = {
   initSupabase,
   getCurrentUser,
@@ -883,5 +889,8 @@ window.cmdSupabase = {
   fetchProblemSubmissions,
   hasProblemSubmission,
   updateProblemSubmission,
-  deleteProblemSubmission
+  deleteProblemSubmission,
+  fetchCertifications,
+  addCertification,
+  deleteCertification
 };
