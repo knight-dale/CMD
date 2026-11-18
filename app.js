@@ -498,8 +498,14 @@ async function loadCertifiedMembers() {
     grouped.get(r.member_name).push(r);
   });
 
-  box.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 'cert-table';
+  table.innerHTML = '<thead><tr><th>#</th><th>Name</th><th>Certification</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+
+  let n = 0;
   grouped.forEach((certs, name) => {
+    n++;
     const badges = certs.map(c => {
       const label = escapeHtml(c.certification) + (c.issued_year ? ' · ' + escapeHtml(c.issued_year) : '');
       const safeUrl = /^https?:\/\//i.test(c.credential_url || '') ? escapeHtml(c.credential_url) : '';
@@ -507,11 +513,14 @@ async function loadCertifiedMembers() {
         ? `<a class="cert-badge" href="${safeUrl}" target="_blank" rel="noopener">${label}</a>`
         : `<span class="cert-badge">${label}</span>`;
     }).join('');
-    const el = document.createElement('div');
-    el.className = 'cert-member';
-    el.innerHTML = `<div class="cert-member-name">${escapeHtml(name)}</div><div class="cert-badges">${badges}</div>`;
-    box.appendChild(el);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="cert-num">${n}</td><td class="cert-name-cell">${escapeHtml(name)}</td><td><div class="cert-badges">${badges}</div></td>`;
+    tbody.appendChild(tr);
   });
+
+  table.appendChild(tbody);
+  box.innerHTML = '';
+  box.appendChild(table);
 }
 
 function initSuggestionForm() {

@@ -1390,3 +1390,41 @@ a.cert-badge:hover {
   font-size: 0.9rem;
   color: var(--text-light-secondary);
 }
+
+.cert-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cert-table th {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-light-secondary);
+  background: var(--bg-light);
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.cert-table td {
+  padding: 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  vertical-align: top;
+}
+
+.cert-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cert-num {
+  width: 48px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-light-secondary);
+}
+
+.cert-name-cell {
+  font-weight: 700;
+}
