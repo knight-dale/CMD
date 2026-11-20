@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="projects-section.css">
+  <link rel="stylesheet" href="hero-podium.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body id="top">
@@ -90,8 +91,29 @@
         </div>
 
         <div class="hero-right">
-          <div class="cad-exploded-wrapper">
-            <img alt="CAD Software" class="cad-exploded-svg" id="hero-cad-image">
+          <div class="podium-panel" id="hero-podium">
+            <div class="podium-head">
+              <span class="podium-kicker">TOP 3 <i>/</i> THIS WEEK</span>
+              <span class="podium-live">LIVE</span>
+            </div>
+
+            <h2 class="podium-title">Weekly challenge<br><span>podium</span></h2>
+
+            <div class="podium-meta">
+              <span class="podium-week" id="podium-week-label">THIS WEEK</span>
+              <i id="podium-sep" hidden>/</i>
+              <span class="podium-code" id="podium-code-label"></span>
+            </div>
+            <p class="podium-sub" id="podium-sub-label">Loading challenge&hellip;</p>
+
+            <div class="podium-grid" id="podium-grid">
+              <div class="podium-empty-note">Loading the podium&hellip;</div>
+            </div>
+
+            <div class="podium-foot">
+              <span>Ranked by challenge points</span>
+              <a href="#leaderboard" class="podium-link">Full standings <span class="podium-arrow">&nearr;</span></a>
+            </div>
           </div>
         </div>
       </div>
@@ -280,7 +302,7 @@
           <span class="mono-tag muted-light">04 / FROM THE WORKSHOP</span>
           <h2 class="section-header-title">Always a work in progress.</h2>
         </div>
-        <a href="challenges.html" class="link-arrow">View past challenges &rarr;</a>
+        <a href="challenges.html" class="link-arrow" style="margin-top:12px;display:inline-flex;">See past challenges &amp; answers &rarr;</a>
       </div>
 
       <div class="challenge-row-grid">
@@ -293,7 +315,10 @@
           <h3 style="font-size:1.85rem;font-weight:700;letter-spacing:-0.02em;margin:16px 0 12px;" id="challenge-title">
             Loading challenge&hellip;
           </h3>
-          <p style="color:var(--text-light-secondary);line-height:1.65;font-size:0.95rem;" id="challenge-desc"></p>
+          <details class="more-info" id="challenge-more-info">
+            <summary>More info</summary>
+            <p id="challenge-desc"></p>
+          </details>
 
           <div class="countdown-flex" id="challenge-countdown" style="display:none;">
             <div class="cd-box">
@@ -471,7 +496,7 @@
             <tr>
               <th style="width:80px;">Rank</th>
               <th>Member Name</th>
-              <th>Current Challenge Pts</th>
+              <th>Challenge Pts (Ranked)</th>
               <th>Total Points</th>
               <th style="text-align:right;">Submissions</th>
             </tr>
@@ -727,6 +752,7 @@
   <script src="projects.js"></script>
   <script src="supabase-client.js"></script>
   <script src="app.js"></script>
+  <script src="hero-podium.js"></script>
   <script src="projects-section.js"></script>
 </body>
 </html>

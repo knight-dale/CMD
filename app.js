@@ -251,10 +251,18 @@ function startCountdown(targetDateString) {
     set('cd-hours', Math.floor((diff % 86400000) / 3600000));
     set('cd-mins', Math.floor((diff % 3600000) / 60000));
     set('cd-secs', Math.floor((diff % 60000) / 1000));
+    return diff;
   }
 
   update();
-  countdownTimer = setInterval(update, 1000);
+  countdownTimer = setInterval(() => {
+    if (update() > 0) return;
+    // Timer hit zero: stop ticking and swap the card to the "coming soon" state
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+    showToast('This challenge has ended. The answers are now in Past Challenges.', 'info');
+    loadActiveChallenge();
+  }, 1000);
   return true;
 }
 
@@ -269,42 +277,46 @@ async function loadActiveChallenge() {
   const badge = byId('challenge-status-badge');
   const titleEl = byId('challenge-title');
   const descEl = byId('challenge-desc');
+  const moreInfo = byId('challenge-more-info');
   const countdown = byId('challenge-countdown');
   const emptyNote = byId('challenge-empty-note');
   const dlBtn = byId('download-brief-btn');
 
-  // No active challenge: show the "coming soon" state and keep both buttons off.
+  // No live challenge (none posted, or the timer ran out): show "coming soon"
   if (!challenge) {
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    window.cmdCurrentChallengeId = null;
+    userSubmittedCurrentChallenge = false;
     if (weekLbl) weekLbl.textContent = 'NO ACTIVE CHALLENGE';
     if (badge) badge.textContent = 'NEXT CHALLENGE NOT YET UPLOADED';
     if (titleEl) titleEl.textContent = 'Next Challenge Coming Soon';
-    if (descEl) descEl.textContent = 'The next weekly design challenge will be posted by the admin team. Check back soon for a new brief, specifications, and submission details.';
+    if (descEl) descEl.textContent = '';
+    if (moreInfo) { moreInfo.open = false; moreInfo.hidden = true; }
     if (countdown) countdown.style.display = 'none';
     if (emptyNote) emptyNote.style.display = 'block';
+    if (dlBtn) dlBtn.href = '#';
+    if (typeof setPodiumChallenge === 'function') setPodiumChallenge(null);
     setChallengeOpen(false, false);
     return;
   }
 
-  // Active challenge. Entries stay open after the deadline because late entries are scored with a penalty.
   const briefUrl = /^https?:\/\//i.test(challenge.brief_pdf_url || '') ? challenge.brief_pdf_url : '';
-  const deadline = new Date(challenge.end_date).getTime();
-  const pastDeadline = !isNaN(deadline) && deadline <= Date.now();
 
   if (weekLbl) weekLbl.textContent = `WEEK ${challenge.week_number} CHALLENGE`;
-  if (badge) badge.textContent = pastDeadline ? 'PAST DEADLINE (LATE PENALTY APPLIES)' : 'ACTIVE BRIEF';
+  if (badge) badge.textContent = 'ACTIVE BRIEF';
   if (titleEl) titleEl.textContent = challenge.title;
-  if (descEl) descEl.textContent = challenge.description;
+  if (descEl) descEl.textContent = challenge.description || '';
+  if (moreInfo) moreInfo.hidden = !challenge.description;
   if (emptyNote) emptyNote.style.display = 'none';
-  if (dlBtn && briefUrl) dlBtn.href = briefUrl;
+  if (dlBtn) dlBtn.href = briefUrl || '#';
+  if (typeof setPodiumChallenge === 'function') setPodiumChallenge(challenge);
 
   const hasTimer = startCountdown(challenge.end_date);
   if (countdown) countdown.style.display = hasTimer ? 'flex' : 'none';
 
-  window.cmdCurrentChallengeId = challenge ? challenge.id : null;
+  window.cmdCurrentChallengeId = challenge.id;
   setChallengeOpen(true, Boolean(briefUrl));
-  if (window.cmdCurrentChallengeId) {
-    checkUserSubmissionStatus(window.cmdCurrentChallengeId);
-  }
+  checkUserSubmissionStatus(challenge.id);
 }
 
 function escapeHtml(s) {
@@ -312,29 +324,199 @@ function escapeHtml(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+function currentPts(item) {
+  return Number(item.current_points) || 0;
+}
+
+function totalPts(item) {
+  return Number(item.points) || 0;
+}
+
+function withRanks(ranked) {
+  let prevPts = null;
+  let prevRank = 0;
+  return ranked.map((item, i) => {
+    const pts = Number(item.current_points) || 0;
+    const rank = pts === prevPts ? prevRank : i + 1;
+    prevPts = pts;
+    prevRank = rank;
+    return { ...item, rank };
+  });
+}
+
+function rankByCurrentChallenge(list) {
+  return list.slice().sort((a, b) =>
+    (currentPts(b) - currentPts(a)) || (totalPts(b) - totalPts(a))
+  );
+}
+
+async function renderHeroPodium(list) {
+  const grid = document.getElementById('podium-grid');
+  if (!grid) return;
+
+  const label = document.getElementById('podium-challenge-label');
+  if (label && window.cmdSupabase) {
+    try {
+      const ch = await window.cmdSupabase.fetchCurrentChallenge();
+      label.textContent = ch ? `WEEK ${ch.week_number} · ${ch.title}` : 'No active challenge';
+    } catch { /* keep default label */ }
+  }
+
+  if (list === null) {
+    grid.innerHTML = '<div class="podium-empty-note">Could not load the top 3.</div>';
+    return;
+  }
+
+  // Only people who have actually scored on this challenge can be on the podium.
+  const top = rankByCurrentChallenge(list).filter(i => currentPts(i) > 0).slice(0, 3);
+
+  if (top.length === 0) {
+    grid.innerHTML = `
+      <div class="podium-empty-note">
+        <strong>The podium is empty.</strong>
+        Be the first to submit a model this week and take the #1 spot.
+      </div>`;
+    return;
+  }
+
+  // Visual order on the podium: 2nd, 1st, 3rd
+  const slots = [
+    { place: 2, cls: 'p2' },
+    { place: 1, cls: 'p1' },
+    { place: 3, cls: 'p3' }
+  ];
+
+  grid.innerHTML = slots.map(({ place, cls }) => {
+    const item = top[place - 1];
+    if (!item) {
+      return `
+        <div class="podium-card ${cls} is-open">
+          <span class="podium-place">${place}</span>
+          <div class="podium-avatar">?</div>
+          <div class="podium-name">Open spot</div>
+          <div class="podium-pts"><span>—</span></div>
+        </div>`;
+    }
+    const name = item.display_name || 'Member';
+    return `
+      <div class="podium-card ${cls}">
+        <span class="podium-place">${place}</span>
+        <div class="podium-avatar">${escapeHtml(name.charAt(0).toUpperCase())}</div>
+        <div class="podium-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+        <div class="podium-pts"><span>${currentPts(item)}</span> PTS</div>
+      </div>`;
+  }).join('');
+}
+
+function rankByCurrent(list) {
+  return [...list].sort((a, b) =>
+    (Number(b.current_points) || 0) - (Number(a.current_points) || 0) ||
+    (Number(b.points) || 0) - (Number(a.points) || 0) ||
+    String(a.display_name || '').localeCompare(String(b.display_name || '')));
+}
+
+function setPodiumChallenge(challenge) {
+  const week = document.getElementById('podium-week-label');
+  const code = document.getElementById('podium-code-label');
+  const sep = document.getElementById('podium-sep');
+  const sub = document.getElementById('podium-sub-label');
+  if (!week || !code || !sub) return;
+
+  if (!challenge) {
+    week.textContent = 'NO ACTIVE CHALLENGE';
+    code.textContent = '';
+    if (sep) sep.hidden = true;
+    sub.textContent = 'The podium returns when the next challenge goes live.';
+    return;
+  }
+
+  // "CMD 1.2 - Advanced Part Modelling" -> code "CMD 1.2", subtitle "Advanced Part Modelling"
+  const parts = String(challenge.title || '').split(/\s+[-\u2013\u2014]\s+/);
+  const head = parts.length > 1 ? parts.shift() : '';
+  const rest = parts.join(' - ');
+
+  week.textContent = challenge.week_number != null
+    ? 'WEEK ' + String(challenge.week_number).padStart(2, '0')
+    : 'THIS WEEK';
+  code.textContent = head;
+  if (sep) sep.hidden = !head;
+  sub.textContent = rest || String(challenge.title || '');
+}
+
+function renderPodium(ranked) {
+  const grid = document.getElementById('podium-grid');
+  if (!grid) return;
+
+  if (ranked === null) {
+    grid.innerHTML = '<div class="podium-empty-note"><strong>Podium unavailable</strong>Could not load standings. Please refresh.</div>';
+    return;
+  }
+
+  const scorers = ranked.filter(r => (Number(r.current_points) || 0) > 0);
+  const top = withRanks(scorers).slice(0, 3);
+
+  if (top.length === 0) {
+    grid.innerHTML = '<div class="podium-empty-note"><strong>No scores yet</strong>Be the first on this week\'s podium.</div>';
+    return;
+  }
+
+  const column = (i) => {
+    const r = top[i];
+
+    if (!r) {
+      const place = i + 1;
+      return `<div class="pod-col p${place} is-open">
+        <div class="pod-avatar">?</div>
+        <div class="pod-name">Open</div>
+        <div class="pod-block"><span class="pod-rank">${String(place).padStart(2, '0')}</span><div class="pod-score"><b>--</b></div></div>
+      </div>`;
+    }
+
+    // Style and bar height come from the shared rank, so tied members match exactly
+    const tier = Math.min(r.rank, 3);
+    const name = String(r.display_name || 'Member').trim();
+    const initial = escapeHtml(name.charAt(0).toUpperCase() || '?');
+    const pts = Number(r.current_points) || 0;
+
+    return `<div class="pod-col p${tier}">
+      ${r.rank === 1 ? '<span class="pod-badge">1ST PLACE</span>' : ''}
+      <div class="pod-avatar">${initial}</div>
+      <div class="pod-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+      <div class="pod-block">
+        <span class="pod-rank">${String(r.rank).padStart(2, '0')}</span>
+        <div class="pod-score"><b>${pts}</b><small>PTS</small></div>
+      </div>
+    </div>`;
+  };
+
+  // Visual order: 2nd, 1st, 3rd
+  grid.innerHTML = [1, 0, 2].map(column).join('');
+}
+
 async function loadLeaderboardTable() {
   const tbody = document.getElementById('leaderboard-table-rows');
-  if (!tbody) return;
 
   const list = window.cmdSupabase ? await window.cmdSupabase.fetchLeaderboard() : null;
+  const ranked = list ? rankByCurrent(list) : null;
+  renderPodium(ranked);
+
+  if (!tbody) return;
   const msgRow = text =>
     `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text-light-secondary);">${text}</td></tr>`;
 
   if (list === null) { tbody.innerHTML = msgRow('Could not load standings. Please refresh.'); return; }
   if (list.length === 0) { tbody.innerHTML = msgRow('No scores yet. Submit a model to take the first spot.'); return; }
 
-  list.sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
-
   tbody.innerHTML = '';
-  list.forEach((item, index) => {
-    const rankNum = index + 1;
+  withRanks(ranked).forEach((item) => {
+    const rankNum = item.rank;
     const rankClass = rankNum === 1 ? 'gold' : rankNum === 2 ? 'silver' : rankNum === 3 ? 'bronze' : '';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="rank-text-pill ${rankClass}">${rankNum}</span></td>
       <td style="font-weight:700;">${escapeHtml(item.display_name)}</td>
-      <td style="font-family:var(--font-mono);font-weight:700;color:var(--neon-green);">${item.current_points != null ? item.current_points : 0} PTS</td>
+      <td style="font-family:var(--font-mono);font-weight:700;color:#0B8A3E;">${Number(item.current_points) || 0} PTS</td>
       <td style="font-family:var(--font-mono);font-weight:700;">${Number(item.points) || 0} PTS</td>
       <td style="text-align:right;font-family:var(--font-mono);color:var(--text-light-secondary);">${item.submission_count || 0}</td>
     `;
@@ -508,10 +690,12 @@ async function loadCertifiedMembers() {
     n++;
     const badges = certs.map(c => {
       const label = escapeHtml(c.certification) + (c.issued_year ? ' · ' + escapeHtml(c.issued_year) : '');
-      const safeUrl = /^https?:\/\//i.test(c.credential_url || '') ? escapeHtml(c.credential_url) : '';
-      return safeUrl
-        ? `<a class="cert-badge" href="${safeUrl}" target="_blank" rel="noopener">${label}</a>`
-        : `<span class="cert-badge">${label}</span>`;
+      const url = /^https?:\/\//i.test(c.credential_url || '') ? escapeHtml(c.credential_url) : '';
+      if (!url) return `<span class="cert-badge">${label}</span>`;
+      const isImg = /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(c.credential_url);
+      return isImg
+        ? `<button type="button" class="cert-badge cert-badge-btn" data-img="${url}">${label}</button>`
+        : `<a class="cert-badge" href="${url}" target="_blank" rel="noopener">${label}</a>`;
     }).join('');
     const tr = document.createElement('tr');
     tr.innerHTML = `<td class="cert-num">${n}</td><td class="cert-name-cell">${escapeHtml(name)}</td><td><div class="cert-badges">${badges}</div></td>`;
@@ -521,6 +705,9 @@ async function loadCertifiedMembers() {
   table.appendChild(tbody);
   box.innerHTML = '';
   box.appendChild(table);
+  box.querySelectorAll('.cert-badge-btn').forEach(b => {
+    b.addEventListener('click', () => openImageModal(b.dataset.img));
+  });
 }
 
 function initSuggestionForm() {
@@ -840,14 +1027,19 @@ function initUploadModal() {
         return;
       }
 
-      // Check if user has already submitted for the current challenge
+      // Re-check the challenge is still live (the timer may have run out while the form was open)
       const challenge = await window.cmdSupabase.fetchCurrentChallenge();
-      if (challenge) {
-        const alreadySubmitted = await window.cmdSupabase.hasUserSubmittedForChallenge(challenge.id, user.email);
-        if (alreadySubmitted) {
-          showToast('You have already submitted for this weekly challenge. Only one submission per challenge is allowed.', 'error');
-          return;
-        }
+      if (!challenge) {
+        showToast('This challenge has closed. The answers are now in Past Challenges.', 'error');
+        modal.style.display = 'none';
+        resetModalState();
+        loadActiveChallenge();
+        return;
+      }
+      const alreadySubmitted = await window.cmdSupabase.hasUserSubmittedForChallenge(challenge.id, user.email);
+      if (alreadySubmitted) {
+        showToast('You have already submitted for this weekly challenge. Only one submission per challenge is allowed.', 'error');
+        return;
       }
 
       const token = ++submissionToken;

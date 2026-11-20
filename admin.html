@@ -573,8 +573,9 @@
                 <input type="number" id="cert-year" class="admin-field-input" min="2000" max="2100" placeholder="2026">
               </div>
               <div>
-                <label class="field-label">Credential URL (optional)</label>
-                <input type="text" id="cert-url" class="admin-field-input" placeholder="https://...">
+                <label class="field-label">Certificate Image (upload) or URL</label>
+                <input type="text" id="cert-url" class="admin-field-input" placeholder="https://... (optional)">
+                <input type="file" id="cert-file" accept="image/*" style="margin-top:8px;font-size:0.8rem;color:var(--text-dark-secondary);">
               </div>
             </div>
             <button type="submit" class="btn-green" style="margin-top:24px;">Add Certification</button>

@@ -104,99 +104,89 @@ async function initAuthState() {
   }
 }
 
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 async function renderPastChallenges() {
   const container = document.getElementById('past-challenges-grid');
   const countBadge = document.getElementById('challenges-count-badge');
   if (!container) return;
 
-  let challenges = [];
-  if (window.cmdSupabase) {
-    challenges = await window.cmdSupabase.fetchAllChallenges();
-  }
+  const list = window.cmdSupabase ? await window.cmdSupabase.fetchPastChallenges() : null;
 
-  const now = Date.now();
-  const pastChallenges = (challenges || []).filter(c => {
-    if (c.end_date) {
-      const deadline = new Date(c.end_date).getTime();
-      if (!isNaN(deadline)) {
-        return deadline <= now;
-      }
-    }
-    return !c.is_active;
-  });
-
-  const displayList = pastChallenges.length > 0 ? pastChallenges : fallbackPastChallenges.filter(c => {
-    if (c.end_date) {
-      const dl = new Date(c.end_date).getTime();
-      return isNaN(dl) || dl <= now;
-    }
-    return true;
-  });
-
-  if (countBadge) {
-    countBadge.textContent = `${displayList.length} CONCLUDED BRIEFS`;
-  }
-
-  if (displayList.length === 0) {
-    container.innerHTML = `
-      <div style="background:#FFFFFF;border:1px dashed var(--border-light);border-radius:4px;padding:48px 20px;text-align:center;grid-column:1/-1;">
-        <span class="mono-tag orange" style="font-size:0.68rem;">COMPETITION ARCHIVE</span>
-        <h4 style="font-size:1.15rem;font-weight:700;margin:12px 0 6px;color:var(--text-light-primary);">No past challenges yet</h4>
-        <p style="font-size:0.88rem;color:var(--text-light-secondary);margin:0 0 20px;">Current competition briefs remain hidden until their official deadline passes to protect component targets.</p>
-        <a href="index.html#challenge" class="btn-sm-action" style="background:#15181B;color:#FFFFFF;text-decoration:none;">View Active Live Challenge &rarr;</a>
-      </div>
-    `;
+  if (list === null) {
+    if (countBadge) countBadge.textContent = '';
+    container.innerHTML = `<div class="past-empty"><p>Could not load past challenges. Please refresh.</p></div>`;
     return;
   }
 
+  if (countBadge) countBadge.textContent = `${list.length} CONCLUDED CHALLENGES`;
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="past-empty">
+        <span class="mono-tag orange" style="font-size:0.68rem;">COMPETITION ARCHIVE</span>
+        <h4>No past challenges yet</h4>
+        <p>Official answers are published here once a challenge's timer runs out.</p>
+        <a href="index.html#challenge" class="btn-sm-action">View the live challenge &rarr;</a>
+      </div>`;
+    return;
+  }
+
+  const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+  const fmt = v => v === null ? '&mdash;' : String(Math.round(v * 1000) / 1000);
+
   container.innerHTML = '';
-  displayList.forEach(c => {
+  list.forEach(c => {
+    const mass = num(c.answer_mass);
+    const cx = num(c.answer_cog_x), cy = num(c.answer_cog_y), cz = num(c.answer_cog_z);
+    const hasAnswers = [mass, cx, cy, cz].some(v => v !== null);
+
+    const hasPdf = /^https?:\/\//i.test(c.brief_pdf_url || '');
+    const start = c.start_date ? new Date(c.start_date).toLocaleDateString() : '';
+    const end = c.end_date ? new Date(c.end_date).toLocaleDateString() : '';
+    const dateRange = start && end ? `${start} to ${end}` : (end ? `Ended ${end}` : '');
+
     const card = document.createElement('div');
-    card.style.background = '#FFFFFF';
-    card.style.border = '1px solid var(--border-light)';
-    card.style.borderRadius = '4px';
-    card.style.padding = '24px';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.gap = '14px';
-
-    const statusTag = `<span class="mono-tag muted-light" style="font-size:0.68rem;">CONCLUDED BRIEF</span>`;
-
-    const hasPdf = c.brief_pdf_url && c.brief_pdf_url !== '#' && !c.brief_pdf_url.startsWith('file:');
-    const startStr = c.start_date ? new Date(c.start_date).toLocaleDateString() : '';
-    const endStr = c.end_date ? new Date(c.end_date).toLocaleDateString() : '';
-    const dateRange = startStr && endStr ? `${startStr} to ${endStr}` : (endStr ? `Deadline: ${endStr}` : 'Sprint Week');
-
-    const hasMass = c.answer_mass != null && c.answer_mass !== '';
-    const hasCog = c.answer_cog != null && c.answer_cog !== '';
-
+    card.className = 'past-card';
     card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span class="mono-tag orange" style="font-size:0.68rem;">WEEK ${c.week_number}</span>
-        ${statusTag}
+      <div class="past-card-top">
+        <span class="mono-tag orange" style="font-size:0.68rem;">WEEK ${esc(c.week_number)}</span>
+        <span class="mono-tag muted-light" style="font-size:0.68rem;">CONCLUDED</span>
       </div>
 
       <div>
-        <h3 style="font-size:1.25rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px;color:var(--text-light-primary);">${c.title}</h3>
-        <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-light-secondary);">${dateRange}</div>
+        <h3 class="past-card-title">${esc(c.title)}</h3>
+        <div class="past-card-dates">${esc(dateRange)}</div>
       </div>
 
-      <p style="font-size:0.88rem;color:var(--text-light-secondary);line-height:1.6;margin:0;flex:1;">
-        ${c.description}
-      </p>
+      ${hasAnswers ? `
+        <div class="answer-panel">
+          <span class="answer-label">OFFICIAL ANSWERS</span>
+          <div class="answer-mass">
+            <span>Total mass</span>
+            <strong>${fmt(mass)} g</strong>
+          </div>
+          <div class="answer-cog">
+            <div><small>CoG X (mm)</small><strong>${fmt(cx)}</strong></div>
+            <div><small>CoG Y (mm)</small><strong>${fmt(cy)}</strong></div>
+            <div><small>CoG Z (mm)</small><strong>${fmt(cz)}</strong></div>
+          </div>
+        </div>` : ''}
 
-      ${hasMass || hasCog ? `
-        <div style="background:#F0F2F5;padding:10px 12px;border-radius:4px;display:flex;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:0.75rem;">
-          ${hasMass ? `<div><span style="color:var(--text-light-secondary);">Official Mass:</span> <strong>${c.answer_mass} kg</strong></div>` : ''}
-          ${hasCog ? `<div><span style="color:var(--text-light-secondary);">Official CoG:</span> <strong>${c.answer_cog} mm</strong></div>` : ''}
-        </div>
-      ` : ''}
+      ${c.description ? `
+        <details class="more-info">
+          <summary>More info</summary>
+          <p>${esc(c.description)}</p>
+        </details>` : ''}
 
-      <div style="display:flex;gap:10px;margin-top:auto;padding-top:8px;">
-        ${hasPdf ? `<a href="${c.brief_pdf_url}" target="_blank" class="btn-sm-action" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">Download PDF Brief &nearr;</a>` : `<span style="font-size:0.75rem;color:var(--text-light-secondary);">No PDF brief attached</span>`}
-      </div>
-    `;
-
+      <div class="past-card-foot">
+        ${hasPdf
+          ? `<a href="${esc(c.brief_pdf_url)}" target="_blank" rel="noopener" class="btn-sm-action">Download PDF Brief &nearr;</a>`
+          : `<span style="font-size:0.75rem;color:var(--text-light-secondary);">No PDF brief attached</span>`}
+      </div>`;
     container.appendChild(card);
   });
 }

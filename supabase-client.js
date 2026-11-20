@@ -156,6 +156,7 @@ async function fetchCurrentChallenge() {
       .from('challenges')
       .select('id, week_number, title, description, start_date, end_date, brief_pdf_url, is_active, created_at')
       .eq('is_active', true)
+      .gt('end_date', new Date().toISOString())
       .order('start_date', { ascending: false })
       .order('week_number', { ascending: false })
       .limit(1)
@@ -165,6 +166,20 @@ async function fetchCurrentChallenge() {
   } catch {
     return null;
   }
+}
+
+async function fetchPastChallenges() {
+  const client = getClient();
+  if (!client) return null;
+  const { data, error } = await client
+    .from('past_challenges')
+    .select('*')
+    .order('end_date', { ascending: false });
+  if (error) {
+    console.error('Past challenges fetch failed:', error);
+    return null;
+  }
+  return data || [];
 }
 
 async function fetchLeaderboard() {
@@ -856,6 +871,7 @@ window.cmdSupabase = {
   signOut,
   resetPassword,
   updatePassword,
+  fetchPastChallenges,
   fetchProjects,
   fetchCurrentChallenge,
   fetchLeaderboard,

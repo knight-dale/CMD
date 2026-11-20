@@ -1101,18 +1101,27 @@ function initCertForm() {
     e.preventDefault();
     const yearVal = document.getElementById('cert-year').value;
     const urlVal = document.getElementById('cert-url').value.trim();
+    const file = document.getElementById('cert-file').files[0];
 
     if (urlVal && !safeHref(urlVal)) {
       showToast('Credential URL must start with http:// or https://', 'error');
       return;
     }
 
+    showToast(file ? 'Uploading certificate...' : 'Saving...', 'info');
+
     try {
+      let credential = urlVal;
+      if (file) {
+        const path = `certificates/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        credential = await window.cmdSupabase.uploadFile('projects', path, file);
+      }
+
       await window.cmdSupabase.addCertification({
         member_name: document.getElementById('cert-name').value.trim(),
         certification: document.getElementById('cert-title').value.trim(),
         issued_year: yearVal !== '' ? parseInt(yearVal, 10) : null,
-        credential_url: urlVal || null
+        credential_url: credential || null
       });
       showToast('Certification added', 'success');
       form.reset();
