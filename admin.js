@@ -279,6 +279,7 @@ async function renderChallengesList() {
       </td>
       <td style="text-align:right;">
         <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button type="button" class="btn-sm-action btn-edit-challenge" data-id="${c.id}">Edit</button>
           <button type="button" class="btn-sm-action btn-toggle-active">${c.is_active ? 'Deactivate' : 'Activate'}</button>
           <button type="button" class="btn-sm-danger btn-del-challenge" data-id="${c.id}">Delete</button>
         </div>
@@ -318,6 +319,12 @@ async function renderChallengesList() {
       }
     });
 
+    const editBtn = tr.querySelector('.btn-edit-challenge');
+    editBtn.addEventListener('click', () => {
+      populateChallengeForm(c);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
     tbody.appendChild(tr);
   });
 }
@@ -326,8 +333,26 @@ function initChallengePublishForm() {
   const form = document.getElementById('challenge-admin-form');
   if (!form) return;
 
+  // Add cancel button to the form
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn && !document.getElementById('challenge-cancel-btn')) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.id = 'challenge-cancel-btn';
+    cancelBtn.className = 'btn-dark-outline';
+    cancelBtn.style.marginLeft = '12px';
+    cancelBtn.textContent = 'Cancel Edit';
+    cancelBtn.style.display = 'none';
+    submitBtn.insertAdjacentElement('afterend', cancelBtn);
+
+    cancelBtn.addEventListener('click', () => {
+      resetChallengeForm();
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const challengeId = document.getElementById('c-id').value;
     const week = parseInt(document.getElementById('c-week').value, 10);
     const title = document.getElementById('c-title').value;
     const start = document.getElementById('c-start').value;
@@ -344,7 +369,8 @@ function initChallengePublishForm() {
     let pdfUrl = document.getElementById('c-pdf-url').value.trim();
     const pdfFile = document.getElementById('c-pdf-file').files[0];
 
-    showToast('Publishing CAD challenge brief...', 'info');
+    const isEditing = !!challengeId;
+    showToast(isEditing ? 'Updating challenge...' : 'Publishing CAD challenge brief...', 'info');
 
     try {
       if (pdfFile && window.cmdSupabase) {
@@ -352,14 +378,7 @@ function initChallengePublishForm() {
         pdfUrl = await window.cmdSupabase.uploadFile('projects', path, pdfFile);
       }
 
-      if (isActive) {
-        const existing = await window.cmdSupabase.fetchAllChallenges();
-        for (const o of existing.filter(x => x.is_active)) {
-          await window.cmdSupabase.updateChallenge(o.id, { is_active: false });
-        }
-      }
-
-      await window.cmdSupabase.addChallenge({
+      const challengeData = {
         week_number: week,
         title,
         start_date: new Date(start).toISOString(),
@@ -373,17 +392,77 @@ function initChallengePublishForm() {
         answer_cog_y: cogY !== '' ? parseFloat(cogY) : null,
         answer_cog_z: cogZ !== '' ? parseFloat(cogZ) : null,
         answer_cog_tolerance: cogTolInput !== '' ? parseFloat(cogTolInput) : 2.0
-      });
+      };
 
-      showToast(`Week ${week} competition published`, 'success');
-      form.reset();
+      if (isActive) {
+        const existing = await window.cmdSupabase.fetchAllChallenges();
+        for (const o of existing.filter(x => x.is_active && x.id !== challengeId)) {
+          await window.cmdSupabase.updateChallenge(o.id, { is_active: false });
+        }
+      }
+
+      if (isEditing) {
+        await window.cmdSupabase.updateChallenge(challengeId, challengeData);
+        showToast(`Week ${week} competition updated`, 'success');
+      } else {
+        await window.cmdSupabase.addChallenge(challengeData);
+        showToast(`Week ${week} competition published`, 'success');
+      }
+
+      resetChallengeForm();
       renderChallengesList();
     } catch (err) {
-      showToast(err.message || 'Error publishing challenge', 'error');
+      showToast(err.message || (isEditing ? 'Error updating challenge' : 'Error publishing challenge'), 'error');
     }
   });
 }
 
+function populateChallengeForm(c) {
+  document.getElementById('c-id').value = c.id;
+  document.getElementById('c-week').value = c.week_number;
+  document.getElementById('c-title').value = c.title;
+  document.getElementById('c-desc').value = c.description;
+  document.getElementById('c-active').checked = c.is_active;
+  document.getElementById('c-answer-mass').value = c.answer_mass !== null && c.answer_mass !== undefined ? c.answer_mass : '';
+  document.getElementById('c-mass-tol').value = c.answer_mass_tolerance !== null && c.answer_mass_tolerance !== undefined ? c.answer_mass_tolerance : '0.05';
+  document.getElementById('c-answer-cog-x').value = c.answer_cog_x !== null && c.answer_cog_x !== undefined ? c.answer_cog_x : '';
+  document.getElementById('c-answer-cog-y').value = c.answer_cog_y !== null && c.answer_cog_y !== undefined ? c.answer_cog_y : '';
+  document.getElementById('c-answer-cog-z').value = c.answer_cog_z !== null && c.answer_cog_z !== undefined ? c.answer_cog_z : '';
+  document.getElementById('c-cog-tol').value = c.answer_cog_tolerance !== null && c.answer_cog_tolerance !== undefined ? c.answer_cog_tolerance : '2.0';
+  document.getElementById('c-pdf-url').value = c.brief_pdf_url || '';
+
+  // Format dates for datetime-local input
+  if (c.start_date) {
+    const startDate = new Date(c.start_date);
+    const startLocal = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000);
+    document.getElementById('c-start').value = startLocal.toISOString().slice(0, 16);
+  }
+  if (c.end_date) {
+    const endDate = new Date(c.end_date);
+    const endLocal = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
+    document.getElementById('c-end').value = endLocal.toISOString().slice(0, 16);
+  }
+
+  // Update UI for edit mode
+  const submitBtn = document.querySelector('#challenge-admin-form button[type="submit"]');
+  const cancelBtn = document.getElementById('challenge-cancel-btn');
+  if (submitBtn) submitBtn.textContent = 'Update Challenge';
+  if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+}
+
+function resetChallengeForm() {
+  const form = document.getElementById('challenge-admin-form');
+  if (form) form.reset();
+  document.getElementById('c-id').value = '';
+  document.getElementById('c-mass-tol').value = '0.05';
+  document.getElementById('c-cog-tol').value = '2.0';
+  document.getElementById('c-active').checked = true;
+
+  const submitBtn = document.querySelector('#challenge-admin-form button[type="submit"]');
+  const cancelBtn = document.getElementById('challenge-cancel-btn');
+  if (submitBtn) submitBtn.textContent = 'Publish CAD Challenge';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
 let cachedSubmissions = [];
 let cachedChallenges = [];
 let submissionsControlsInitialized = false;
