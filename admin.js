@@ -279,24 +279,31 @@ async function renderChallengesList() {
       </td>
       <td style="text-align:right;">
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          ${!c.is_active ? `<button type="button" class="btn-sm-action btn-set-active" data-id="${c.id}">Activate</button>` : ''}
+          <button type="button" class="btn-sm-action btn-toggle-active">${c.is_active ? 'Deactivate' : 'Activate'}</button>
           <button type="button" class="btn-sm-danger btn-del-challenge" data-id="${c.id}">Delete</button>
         </div>
       </td>
     `;
 
-    const actBtn = tr.querySelector('.btn-set-active');
-    if (actBtn) {
-      actBtn.addEventListener('click', async () => {
-        try {
+    const toggleBtn = tr.querySelector('.btn-toggle-active');
+    toggleBtn.addEventListener('click', async () => {
+      try {
+        if (c.is_active) {
+          await window.cmdSupabase.updateChallenge(c.id, { is_active: false });
+          showToast(`Week ${c.week_number} deactivated`, 'success');
+        } else {
+          // Only one live challenge at a time
+          for (const o of challenges.filter(x => x.is_active && x.id !== c.id)) {
+            await window.cmdSupabase.updateChallenge(o.id, { is_active: false });
+          }
           await window.cmdSupabase.updateChallenge(c.id, { is_active: true });
-          showToast(`Week ${c.week_number} challenge is now active live`, 'success');
-          renderChallengesList();
-        } catch (err) {
-          showToast(err.message || 'Error updating status', 'error');
+          showToast(`Week ${c.week_number} is now the live challenge`, 'success');
         }
-      });
-    }
+        renderChallengesList();
+      } catch (err) {
+        showToast(err.message || 'Error updating status', 'error');
+      }
+    });
 
     const delBtn = tr.querySelector('.btn-del-challenge');
     delBtn.addEventListener('click', async () => {
@@ -345,11 +352,18 @@ function initChallengePublishForm() {
         pdfUrl = await window.cmdSupabase.uploadFile('projects', path, pdfFile);
       }
 
+      if (isActive) {
+        const existing = await window.cmdSupabase.fetchAllChallenges();
+        for (const o of existing.filter(x => x.is_active)) {
+          await window.cmdSupabase.updateChallenge(o.id, { is_active: false });
+        }
+      }
+
       await window.cmdSupabase.addChallenge({
         week_number: week,
         title,
-        start_date: start,
-        end_date: end,
+        start_date: new Date(start).toISOString(),
+        end_date: new Date(end).toISOString(),
         description: desc,
         brief_pdf_url: pdfUrl,
         is_active: isActive,
